@@ -23,7 +23,7 @@ void MainScene::Init(GameManager* GameManager)
 	Entity* player = new Entity();
 	new PlayerScript(*player); //Add script to entity (and set it to the entity)
 	SystemsManager::Get().AddComponent<HealthComponent>(*player);
-	auto ccc = SystemsManager::Get().AddComponent<AABBCollisionComponent>(*player);
+	//auto ccc = SystemsManager::Get().AddComponent<AABBCollisionComponent>(*player);
 	m_MyGameManager->AddEntity(player);
 
 //Player Cam

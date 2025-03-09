@@ -1180,30 +1180,21 @@ void DirectXWindowManager::OnMouseMove(WPARAM btnState, int x, int y) {
 	const POINT lastMousePos = Wiz::InputsManager::Get().GetLastMousePosition();
 	x = lastMousePos.x;
 	y = lastMousePos.y;
-	
-	const XMVECTOR cameraWorldRotation = cameraC->m_AttachedEntity->m_Transform.GetWorldRotation();
-	float pitch = XMVectorGetX(cameraWorldRotation);
-	float yaw = XMVectorGetY(cameraWorldRotation);
 
     if ((btnState & MK_LBUTTON) != 0 || m_lockMouseInWindow) {
  
         constexpr float sensitivity = 0.1f;
 
-        const float dx = sensitivity * static_cast<float>(x - m_LastMousePos.x);
-        const float dy = sensitivity * static_cast<float>(y - m_LastMousePos.y);
+        float dx = sensitivity * static_cast<float>(x - m_LastMousePos.x);
+        float dy = sensitivity * static_cast<float>(y - m_LastMousePos.y);
 
-    	auto a = HALF_WINDOW_WIDTH;
-    	auto b = HALF_WINDOW_HEIGHT;
+    	//abs(dx) < abs(dy) ? dx = 0 : dy = 0;
+    	std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
     	
-        yaw += dx; 
-        pitch += dy;
-
-#ifdef _TEST_BUGCHELOUGENRETUCONNAIS
-        cameraC->m_AttachedEntity->m_Transform.SetWorldRotation(pitch, -yaw, XMVectorGetZ(cameraWorldRotation);
-#else
-    	cameraC->m_AttachedEntity->m_Transform.SetWorldRotation(pitch, yaw, XMVectorGetZ(cameraWorldRotation));
-#endif
+    	cameraC->m_AttachedEntity->m_Transform.WorldRotate(dy, dx, 0.f);
+    	
     	std::cout << cameraC->m_Transform.Print(false, true) << std::endl; //{LOG}
+    	std::cout << cameraC->m_AttachedEntity->m_Transform.Print(false, true) << std::endl; //{LOG}
     }
 	
     if ((btnState & MK_RBUTTON) != 0) {

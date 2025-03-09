@@ -60,15 +60,14 @@ public:
 	void SetPosition(const XMFLOAT3& position);
 
 	//===== Rotation =====//
-	_NODISCARD XMVECTOR XM_CALLCONV GetLocalRotation() { return XMLoadFloat3(&vCachedLocalRotation); }
-	_NODISCARD XMVECTOR XM_CALLCONV GetWorldRotation() { return XMLoadFloat3(&vCachedWorldRotation); }
-	_NODISCARD XMVECTOR XM_CALLCONV GetForwardVector() { return XMLoadFloat3(&vForward); };
-	_NODISCARD XMVECTOR XM_CALLCONV GetBackwardVector() { return -XMLoadFloat3(&vForward); };
-	_NODISCARD XMVECTOR XM_CALLCONV GetRightVector() { return XMLoadFloat3(&vRight); };
-	_NODISCARD XMVECTOR XM_CALLCONV GetLeftVector() { return -XMLoadFloat3(&vRight); };
-	_NODISCARD XMVECTOR XM_CALLCONV GetUpVector() { return XMLoadFloat3(&vUp); };
-	_NODISCARD XMVECTOR XM_CALLCONV GetDownVector() { return -XMLoadFloat3(&vUp); };
-	_NODISCARD XMVECTOR XM_CALLCONV GetRotationQuaternion() { return XMLoadFloat4(&qRotation); };
+	GETTER XMVECTOR XM_CALLCONV GetLocalRotation() { return XMLoadFloat3(&vCachedLocalRotation); }
+	GETTER XMVECTOR XM_CALLCONV GetWorldRotation() { return XMLoadFloat3(&vCachedWorldRotation); }
+	GETTER XMVECTOR XM_CALLCONV GetForwardVector() { return XMLoadFloat3(&vForward); };
+	GETTER XMVECTOR XM_CALLCONV GetBackwardVector() { return -XMLoadFloat3(&vForward); };
+	GETTER XMVECTOR XM_CALLCONV GetRightVector() { return XMLoadFloat3(&vRight); };
+	GETTER XMVECTOR XM_CALLCONV GetLeftVector() { return -XMLoadFloat3(&vRight); };
+	GETTER XMVECTOR XM_CALLCONV GetUpVector() { return XMLoadFloat3(&vUp); };
+	GETTER XMVECTOR XM_CALLCONV GetDownVector() { return -XMLoadFloat3(&vUp); };
 
 	/** Returns true if the transform have a rotation (by checking qRotation.w) */
 	GETTER bool IsRotated() { return (qRotation.w != 1.f); }
@@ -104,6 +103,11 @@ public:
 	void LocalRotateYaw(float angle);
 	/** @param angle: degrees value */
 	void LocalRotateRoll(float angle);
+
+	/** This function update the rotation data from another transform, the world matrix will be updated at next tick. */
+	void UpdateRotationFromTransform(const Transform& anotherTransform);
+	
+	void RecalculateAndStoreCachedAngles(bool localAngles = true, bool worldAngles = false);
 
 	/** Format the angle to use the clockwise rotation system. */
 	/** @param angle: degrees value */

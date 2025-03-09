@@ -2,7 +2,7 @@
 ::Github link: https://github.com/Wizurth
 
 set SOLUTION_NAME=Engine-Project
-set ROOT_DIRECTORY_NAME=lyo-t2-amiga-p7-09
+set ROOT_DIRECTORY_NAME=BigEngine
 set bAutoOpenSLN=true
 set bCopyVisualFilters=false
 

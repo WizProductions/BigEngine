@@ -32,14 +32,7 @@ void CameraSystem::Update() {
             const XMVECTOR entityPos = XMLoadFloat3(&m_SelectedCamera->m_AttachedEntity->m_Transform.GetPosition());
             const XMVECTOR vNewCameraPos = (entityPos - m_SelectedCamera->m_DistToEntity * m_SelectedCamera->m_AttachedEntity->m_Transform.GetForwardVector());
 
-            XMFLOAT3 newLocalRotation;
-            XMStoreFloat3(&newLocalRotation, m_SelectedCamera->m_AttachedEntity->m_Transform.GetLocalRotation());
-            
-            XMFLOAT3 newWorldRotation;
-            XMStoreFloat3(&newWorldRotation, m_SelectedCamera->m_AttachedEntity->m_Transform.GetWorldRotation());
-            
-            m_SelectedCamera->m_Transform.SetLocalRotation(newLocalRotation.x, newLocalRotation.y, newLocalRotation.z);
-            m_SelectedCamera->m_Transform.SetWorldRotation(newWorldRotation.x, newWorldRotation.y, newWorldRotation.z);
+            m_SelectedCamera->m_Transform.UpdateRotationFromTransform(m_SelectedCamera->m_AttachedEntity->m_Transform);
 
             XMFLOAT3 newCameraPos;
             XMStoreFloat3(&newCameraPos, vNewCameraPos);

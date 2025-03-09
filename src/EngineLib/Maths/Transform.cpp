@@ -156,7 +156,9 @@ void Transform::SetWorldRotation(float pitch, float yaw, float roll) {
 	UpdateRotationMatrix();
 }
 
-void Transform::WorldRotate(float pitch, float yaw, float roll) {
+/*void Transform::WorldRotate(float pitch, float yaw, float roll) {
+
+	std::cout << "WorldRotate: " << pitch << ", " << yaw << ", " << roll << std::endl;
 
 	NormalizeDegreeAngle(pitch);
 	NormalizeDegreeAngle(yaw);
@@ -180,11 +182,13 @@ void Transform::WorldRotate(float pitch, float yaw, float roll) {
 
 	// Create quaternions for rotation around the world axes
 	XMVECTOR newQuat = XMQuaternionRotationRollPitchYaw(pitchRad, yawRad, rollRad);
+	XMQuaternionRotationAxis({0, 1, 0}, yawRad);
+	XMQuaternionRotationAxis({0, 0, 1}, rollRad);
+	XMQuaternionRotationAxis({1, 0, 0}, pitchRad);
 
 	// Load the current rotation quaternion
 	XMVECTOR currentQuat = XMLoadFloat4(&qRotation);
-
-	// Normalize to prevent accumulation errors
+	
 	XMVECTOR combinedQuat = XMQuaternionMultiply(currentQuat, newQuat);
 
 	// Normalize the combined quaternion
@@ -209,6 +213,62 @@ void Transform::WorldRotate(float pitch, float yaw, float roll) {
 
 	// Update the rotation matrix and mark the transform matrix as dirty
 	UpdateRotationMatrix();
+}*/
+void Transform::WorldRotate(float pitch, float yaw, float roll) {
+
+	std::cout << "WorldRotate: " << pitch << ", " << yaw << ", " << roll << std::endl;
+
+	NormalizeDegreeAngle(pitch);
+	NormalizeDegreeAngle(yaw);
+	NormalizeDegreeAngle(roll);
+
+	//Update the world rotation vector
+	XMVECTOR vCachedRotationOld = XMLoadFloat3(&vCachedWorldRotation);
+	vCachedRotationOld += { pitch, yaw, roll };
+	XMStoreFloat3(&vCachedWorldRotation, vCachedRotationOld);
+	NormalizeDegreeAngle(vCachedWorldRotation.x);
+	NormalizeDegreeAngle(vCachedWorldRotation.y);
+	NormalizeDegreeAngle(vCachedWorldRotation.z);
+
+	//Format the roll to use the clockwise rotation system Left to Right
+	roll = ToClockWiseRotationFormat(roll);
+
+	// Convert angles to radians
+	const float pitchRad = XMConvertToRadians(pitch);
+	const float yawRad = XMConvertToRadians(yaw);
+	const float rollRad = XMConvertToRadians(roll);
+
+	XMVECTOR qNewQuat = XMQuaternionRotationAxis({0, 1, 0}, yawRad);
+	XMVECTOR qRotTemp = XMQuaternionRotationAxis({1, 0, 0}, pitchRad);
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+	
+	qRotTemp = XMQuaternionRotationAxis({0, 0, 1}, rollRad);
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+
+	XMVECTOR currentQuat = XMLoadFloat4(&qRotation);
+	
+	XMVECTOR combinedQuat = XMQuaternionMultiply(currentQuat, qNewQuat);
+	XMStoreFloat4(&qRotation, combinedQuat);
+
+	XMStoreFloat4x4(&mRotation,
+		XMMatrixRotationQuaternion(combinedQuat)
+	);
+	
+	vRight.x = mRotation._11;
+	vRight.y = mRotation._12;
+	vRight.z = mRotation._13;
+	vUp.x = mRotation._21;
+	vUp.y = mRotation._22;
+	vUp.z = mRotation._23;
+	vForward.x = mRotation._31;
+	vForward.y = mRotation._32;
+	vForward.z = mRotation._33;
+
+	// Clean the rotation vectors to prevent floating-point errors
+	CleanRotationVectors();
+
+	// Update the rotation matrix and mark the transform matrix as dirty
+	UpdateRotationMatrix();
 }
 
 void Transform::RotateWorldPitch(const float angle) { this->WorldRotate(angle, 0.f, 0.f); }
@@ -220,6 +280,8 @@ void Transform::SetLocalRotation(float pitch, float yaw, float roll) {
 	NormalizeDegreeAngle(pitch);
 	NormalizeDegreeAngle(yaw);
 	NormalizeDegreeAngle(roll);
+
+	vCachedLocalRotation = {pitch, yaw, roll};
 	
 	//Format the roll to use the clockwise rotation system Left to Right
 	roll = ToClockWiseRotationFormat(roll);
@@ -258,9 +320,6 @@ void Transform::SetLocalRotation(float pitch, float yaw, float roll) {
 	XMStoreFloat4(&qRotation, newQuat);
 
 	UpdateRotationMatrix();
-	
-	XMFLOAT3 newAngles = ExtractPitchYawRollFromMatrix(XMLoadFloat4x4(&mRotation));
-	vCachedLocalRotation = newAngles;
 }
 
 void Transform::LocalRotatePitch(const float angle) { this->LocalRotate(angle, 0.f, 0.f); }
@@ -271,6 +330,14 @@ void Transform::LocalRotate(float pitch, float yaw, float roll) {
 	NormalizeDegreeAngle(pitch);
 	NormalizeDegreeAngle(yaw);
 	NormalizeDegreeAngle(roll);
+
+	//Update the world rotation vector
+	XMVECTOR vCachedRotationOld = XMLoadFloat3(&vCachedWorldRotation);
+	vCachedRotationOld += { pitch, yaw, roll };
+	XMStoreFloat3(&vCachedWorldRotation, vCachedRotationOld);
+	NormalizeDegreeAngle(vCachedWorldRotation.x);
+	NormalizeDegreeAngle(vCachedWorldRotation.y);
+	NormalizeDegreeAngle(vCachedWorldRotation.z);
 
 	//Format the roll to use the clockwise rotation system Left to Right
 	roll = ToClockWiseRotationFormat(roll);
@@ -316,17 +383,26 @@ void Transform::LocalRotate(float pitch, float yaw, float roll) {
 
 	// Update the rotation matrix and mark the transform matrix as dirty
 	UpdateRotationMatrix();
+}
 
-	XMFLOAT3 newAngles = ExtractPitchYawRollFromMatrix(XMLoadFloat4x4(&mRotation));
-	vCachedLocalRotation = newAngles;
+void Transform::UpdateRotationFromTransform(const Transform& anotherTransform) {
+
+	mRotation = anotherTransform.mRotation;
+	qRotation = anotherTransform.qRotation;
+	vCachedLocalRotation = anotherTransform.vCachedLocalRotation;
+	vCachedWorldRotation = anotherTransform.vCachedWorldRotation;
+
+	vForward = anotherTransform.vForward;
+	vRight = anotherTransform.vRight;
+	vUp = anotherTransform.vUp;
+
+	bTransformMatrixDirty = true; 
 }
 
 float Transform::ToClockWiseRotationFormat(float angle) {
 
-	//Reverse the angle to use the clockwise rotation system
-	angle = 0.f - angle;
-
-	return angle;
+	//Reverse the angle to use the clockwise rotation system 
+	return 0.f - angle;
 }
 
 void Transform::CleanRotationVectors() {
