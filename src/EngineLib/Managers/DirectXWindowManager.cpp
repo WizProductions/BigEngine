@@ -1207,8 +1207,6 @@ void DirectXWindowManager::OnMouseMove(WPARAM btnState, int x, int y) {
     	std::cout << cameraC->m_Transform.Print() << std::endl; //{LOG}
     }
 
-    cameraC->m_Transform.UpdateTransformMatrix();
-
 	if (!m_lockMouseInWindow) {
 		m_LastMousePos.x = x;
 		m_LastMousePos.y = y;

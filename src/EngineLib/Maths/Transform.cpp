@@ -250,10 +250,12 @@ void Transform::WorldRotate(float pitch, float yaw, float roll) {
 	XMVECTOR combinedQuat = XMQuaternionMultiply(currentQuat, qNewQuat);
 	XMStoreFloat4(&qRotation, combinedQuat);
 
-	XMStoreFloat4x4(&mRotation,
-		XMMatrixRotationQuaternion(combinedQuat)
-	);
-	
+	// Clean the rotation vectors to prevent floating-point errors
+	CleanRotationVectors();
+
+	// Update the rotation matrix and mark the transform matrix as dirty
+	UpdateRotationMatrix();
+
 	vRight.x = mRotation._11;
 	vRight.y = mRotation._12;
 	vRight.z = mRotation._13;
@@ -263,12 +265,6 @@ void Transform::WorldRotate(float pitch, float yaw, float roll) {
 	vForward.x = mRotation._31;
 	vForward.y = mRotation._32;
 	vForward.z = mRotation._33;
-
-	// Clean the rotation vectors to prevent floating-point errors
-	CleanRotationVectors();
-
-	// Update the rotation matrix and mark the transform matrix as dirty
-	UpdateRotationMatrix();
 }
 
 void Transform::RotateWorldPitch(const float angle) { this->WorldRotate(angle, 0.f, 0.f); }
@@ -280,14 +276,8 @@ void Transform::SetLocalRotation(float pitch, float yaw, float roll) {
 	NormalizeDegreeAngle(pitch);
     NormalizeDegreeAngle(yaw);
     NormalizeDegreeAngle(roll);
-
-    //Update the world rotation vector
-    XMVECTOR vCachedRotationOld = XMLoadFloat3(&vCachedLocalRotation);
-    vCachedRotationOld += { pitch, yaw, roll };
-    XMStoreFloat3(&vCachedLocalRotation, vCachedRotationOld);
-    NormalizeDegreeAngle(vCachedLocalRotation.x);
-    NormalizeDegreeAngle(vCachedLocalRotation.y);
-    NormalizeDegreeAngle(vCachedLocalRotation.z);
+	
+    vCachedLocalRotation = { pitch, yaw, roll };
 
     //Format the roll to use the clockwise rotation system Left to Right
     roll = ToClockWiseRotationFormat(roll);
@@ -297,37 +287,39 @@ void Transform::SetLocalRotation(float pitch, float yaw, float roll) {
     const float yawRad = XMConvertToRadians(yaw);
     const float rollRad = XMConvertToRadians(roll);
 
-    XMVECTOR qNewQuat = XMQuaternionRotationAxis(XMLoadFloat3(&vUp), yawRad);
-    XMVECTOR qRotTemp = XMQuaternionRotationAxis(XMLoadFloat3(&vRight), pitchRad);
-    qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
-    
-    qRotTemp = XMQuaternionRotationAxis(XMLoadFloat3(&vForward), rollRad);
-    qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+    XMVECTOR qNewQuat = XMQuaternionRotationAxis({0.f, 1.f, 0.f}, yawRad); //Rotate around Y
 
-    XMVECTOR currentQuat = XMLoadFloat4(&qRotation);
-    
-    XMVECTOR combinedQuat = XMQuaternionMultiply(currentQuat, qNewQuat);
-    XMStoreFloat4(&qRotation, combinedQuat);
+	//Reconstruct the right vector from the quaternion
+	static const XMVECTOR defaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+	XMVECTOR newTempRightVect = XMVector3Rotate(defaultRight, qNewQuat);
 
-    XMStoreFloat4x4(&mRotation,
-    	XMMatrixRotationQuaternion(combinedQuat)
-    );
-    
-    vRight.x = mRotation._11;
-    vRight.y = mRotation._12;
-    vRight.z = mRotation._13;
-    vUp.x = mRotation._21;
-    vUp.y = mRotation._22;
-    vUp.z = mRotation._23;
-    vForward.x = mRotation._31;
-    vForward.y = mRotation._32;
-    vForward.z = mRotation._33;
+	XMVECTOR qRotTemp = XMQuaternionRotationAxis(newTempRightVect, pitchRad); //Rotate around X
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+
+	//Reconstruct the forward vector from the quaternion
+	static const XMVECTOR defaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	XMVECTOR newTempForwardVect = XMVector3Rotate(defaultForward, qNewQuat);
+
+	qRotTemp = XMQuaternionRotationAxis(newTempForwardVect, rollRad); //Rotate around Z
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+
+    XMStoreFloat4(&qRotation, qNewQuat);
 
     // Clean the rotation vectors to prevent floating-point errors
     CleanRotationVectors();
 
     // Update the rotation matrix and mark the transform matrix as dirty
     UpdateRotationMatrix();
+
+	vRight.x = mRotation._11;
+	vRight.y = mRotation._12;
+	vRight.z = mRotation._13;
+	vUp.x = mRotation._21;
+	vUp.y = mRotation._22;
+	vUp.z = mRotation._23;
+	vForward.x = mRotation._31;
+	vForward.y = mRotation._32;
+	vForward.z = mRotation._33;
 }
 
 void Transform::LocalRotatePitch(const float angle) { this->LocalRotate(angle, 0.f, 0.f); }
@@ -338,59 +330,58 @@ void Transform::LocalRotate(float pitch, float yaw, float roll) {
 	NormalizeDegreeAngle(pitch);
 	NormalizeDegreeAngle(yaw);
 	NormalizeDegreeAngle(roll);
-
+	
 	//Update the world rotation vector
-	XMVECTOR vCachedRotationOld = XMLoadFloat3(&vCachedWorldRotation);
+	XMVECTOR vCachedRotationOld = XMLoadFloat3(&vCachedLocalRotation);
 	vCachedRotationOld += { pitch, yaw, roll };
-	XMStoreFloat3(&vCachedWorldRotation, vCachedRotationOld);
-	NormalizeDegreeAngle(vCachedWorldRotation.x);
-	NormalizeDegreeAngle(vCachedWorldRotation.y);
-	NormalizeDegreeAngle(vCachedWorldRotation.z);
+	XMStoreFloat3(&vCachedLocalRotation, vCachedRotationOld);
+	
+	NormalizeDegreeAngle(vCachedLocalRotation.x);
+	NormalizeDegreeAngle(vCachedLocalRotation.y);
+	NormalizeDegreeAngle(vCachedLocalRotation.z);
 
 	//Format the roll to use the clockwise rotation system Left to Right
 	roll = ToClockWiseRotationFormat(roll);
 
-	//Convert the angles to radians
-	pitch = XMConvertToRadians(pitch);
-	yaw = XMConvertToRadians(yaw);
-	roll = XMConvertToRadians(roll);
+	// Convert angles to radians
+	const float pitchRad = XMConvertToRadians(pitch);
+	const float yawRad = XMConvertToRadians(yaw);
+	const float rollRad = XMConvertToRadians(roll);
 
-	// Create a new quaternion representing the rotation from the given *radians* angles
-	XMVECTOR rotatedX = XMQuaternionRotationAxis(XMLoadFloat3(&vForward), roll);
-	XMVECTOR rotatedY = XMQuaternionRotationAxis(XMLoadFloat3(&vRight), pitch);
-	XMVECTOR rotatedZ = XMQuaternionRotationAxis(XMLoadFloat3(&vUp), yaw);
+	XMVECTOR qNewQuat = XMQuaternionRotationAxis(XMLoadFloat3(&vUp), yawRad); //Rotate around Y
+	//Reconstruct the right vector from the quaternion
+	static const XMVECTOR defaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+	XMVECTOR newTempRightVect = XMVector3Rotate(defaultRight, qNewQuat);
 
-	// YXZ order: Yaw → Pitch → Roll
-	XMVECTOR newQuat = XMQuaternionMultiply(rotatedZ, rotatedX);
-	newQuat = XMQuaternionMultiply(newQuat, rotatedY); //Already normalized by XMQuaternionRotationAxis?!
+	XMVECTOR qRotTemp = XMQuaternionRotationAxis(newTempRightVect, pitchRad); //Rotate around X
+	
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+	//Reconstruct the forward vector from the quaternion
+	static const XMVECTOR defaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	XMVECTOR newTempForwardVect = XMVector3Rotate(defaultForward, qNewQuat);
+	
+	qRotTemp = XMQuaternionRotationAxis(newTempForwardVect, rollRad); //Rotate around Z
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
 
-	XMVECTOR currentQuat = XMLoadFloat4(&qRotation);
+	qNewQuat = XMQuaternionMultiply(XMLoadFloat4(&qRotation), qNewQuat);
 
-	// Combine the current quaternion with the new rotation quaternion (applied in local space)
-	XMVECTOR combinedQuat = XMQuaternionMultiply(currentQuat, newQuat);
-	combinedQuat = XMQuaternionNormalize(combinedQuat); // Ensure the quaternion remains normalized
-
-	XMStoreFloat4(&qRotation, combinedQuat);
-
-	// Update the forward, right, and up vectors based on the new rotation
-	XMVECTOR defaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-	XMVECTOR defaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-	XMVECTOR defaultUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-	XMVECTOR rotatedForward = XMVector3Rotate(defaultForward, combinedQuat);
-	XMVECTOR rotatedRight = XMVector3Rotate(defaultRight, combinedQuat);
-	XMVECTOR rotatedUp = XMVector3Rotate(defaultUp, combinedQuat);
-
-	// Store the rotated vectors back into the member variables
-	XMStoreFloat3(&vForward, rotatedForward);
-	XMStoreFloat3(&vRight, rotatedRight);
-	XMStoreFloat3(&vUp, rotatedUp);
+	XMStoreFloat4(&qRotation, qNewQuat);
 
 	// Clean the rotation vectors to prevent floating-point errors
 	CleanRotationVectors();
 
 	// Update the rotation matrix and mark the transform matrix as dirty
 	UpdateRotationMatrix();
+	
+	vRight.x = mRotation._11;
+	vRight.y = mRotation._12;
+	vRight.z = mRotation._13;
+	vUp.x = mRotation._21;
+	vUp.y = mRotation._22;
+	vUp.z = mRotation._23;
+	vForward.x = mRotation._31;
+	vForward.y = mRotation._32;
+	vForward.z = mRotation._33;
 }
 
 void Transform::UpdateRotationFromTransform(const Transform& anotherTransform) {
