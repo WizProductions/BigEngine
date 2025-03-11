@@ -1191,7 +1191,7 @@ void DirectXWindowManager::OnMouseMove(WPARAM btnState, int x, int y) {
     	//abs(dx) < abs(dy) ? dx = 0 : dy = 0;
     	std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
     	
-    	cameraC->m_AttachedEntity->m_Transform.WorldRotate(dy, dx, 0.f);
+    	cameraC->m_AttachedEntity->m_Transform.LocalRotate(dy, dx, 0.f);
     	
     	std::cout << cameraC->m_Transform.Print(false, true) << std::endl; //{LOG}
     	std::cout << cameraC->m_AttachedEntity->m_Transform.Print(false, true) << std::endl; //{LOG}
