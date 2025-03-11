@@ -350,15 +350,13 @@ void Transform::LocalRotate(float pitch, float yaw, float roll) {
 
 	XMVECTOR qNewQuat = XMQuaternionRotationAxis(XMLoadFloat3(&vUp), yawRad); //Rotate around Y
 	//Reconstruct the right vector from the quaternion
-	static const XMVECTOR defaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-	XMVECTOR newTempRightVect = XMVector3Rotate(defaultRight, qNewQuat);
+	XMVECTOR newTempRightVect = XMVector3Rotate(XMLoadFloat3(&vRight), qNewQuat);
 
 	XMVECTOR qRotTemp = XMQuaternionRotationAxis(newTempRightVect, pitchRad); //Rotate around X
 	
 	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
 	//Reconstruct the forward vector from the quaternion
-	static const XMVECTOR defaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-	XMVECTOR newTempForwardVect = XMVector3Rotate(defaultForward, qNewQuat);
+	XMVECTOR newTempForwardVect = XMVector3Rotate(XMLoadFloat3(&vForward), qNewQuat);
 	
 	qRotTemp = XMQuaternionRotationAxis(newTempForwardVect, rollRad); //Rotate around Z
 	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
