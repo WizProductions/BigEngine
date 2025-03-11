@@ -273,6 +273,8 @@ void Transform::RotateWorldRoll(const float angle) { this->WorldRotate(0.f, 0.f,
 
 void Transform::SetLocalRotation(float pitch, float yaw, float roll) {
 
+	//TODO: Actually, this function override WorldRotation, need to be set in order? World -> Local ? And same in SetWorldRotation? 
+	
 	NormalizeDegreeAngle(pitch);
     NormalizeDegreeAngle(yaw);
     NormalizeDegreeAngle(roll);
@@ -340,6 +342,8 @@ void Transform::LocalRotate(float pitch, float yaw, float roll) {
 	NormalizeDegreeAngle(vCachedLocalRotation.y);
 	NormalizeDegreeAngle(vCachedLocalRotation.z);
 
+	return SetLocalRotation(vCachedLocalRotation.x, vCachedLocalRotation.y, vCachedLocalRotation.z);
+
 	//Format the roll to use the clockwise rotation system Left to Right
 	roll = ToClockWiseRotationFormat(roll);
 
@@ -348,20 +352,22 @@ void Transform::LocalRotate(float pitch, float yaw, float roll) {
 	const float yawRad = XMConvertToRadians(yaw);
 	const float rollRad = XMConvertToRadians(roll);
 
-	XMVECTOR qNewQuat = XMQuaternionRotationAxis(XMLoadFloat3(&vUp), yawRad); //Rotate around Y
+	XMVECTOR qNewQuat = XMLoadFloat4(&qRotation);
+	
+	XMVECTOR qRotTemp = XMQuaternionRotationAxis(XMLoadFloat3(&vUp), yawRad); //Rotate around Y
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+	
 	//Reconstruct the right vector from the quaternion
 	XMVECTOR newTempRightVect = XMVector3Rotate(XMLoadFloat3(&vRight), qNewQuat);
 
-	XMVECTOR qRotTemp = XMQuaternionRotationAxis(newTempRightVect, pitchRad); //Rotate around X
-	
+	qRotTemp = XMQuaternionRotationAxis(newTempRightVect, pitchRad); //Rotate around X
 	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+	
 	//Reconstruct the forward vector from the quaternion
 	XMVECTOR newTempForwardVect = XMVector3Rotate(XMLoadFloat3(&vForward), qNewQuat);
 	
 	qRotTemp = XMQuaternionRotationAxis(newTempForwardVect, rollRad); //Rotate around Z
 	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
-
-	qNewQuat = XMQuaternionMultiply(XMLoadFloat4(&qRotation), qNewQuat);
 
 	XMStoreFloat4(&qRotation, qNewQuat);
 
