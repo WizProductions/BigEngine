@@ -238,11 +238,11 @@ void Transform::WorldRotate(float pitch, float yaw, float roll) {
 	const float yawRad = XMConvertToRadians(yaw);
 	const float rollRad = XMConvertToRadians(roll);
 
-	XMVECTOR qNewQuat = XMQuaternionRotationAxis({0, 1, 0}, yawRad);
-	XMVECTOR qRotTemp = XMQuaternionRotationAxis({1, 0, 0}, pitchRad);
-	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
+	XMVECTOR qNewQuat = XMQuaternionRotationAxis({0, 1, 0}, yawRad); //Rotation Y
+	XMVECTOR qRotTemp = XMQuaternionRotationAxis({1, 0, 0}, pitchRad); //Rotation X
+	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp); //Y * X
 	
-	qRotTemp = XMQuaternionRotationAxis({0, 0, 1}, rollRad);
+	qRotTemp = XMQuaternionRotationAxis({0, 0, 1}, rollRad); //Rotation Z
 	qNewQuat = XMQuaternionMultiply(qNewQuat, qRotTemp);
 
 	XMVECTOR currentQuat = XMLoadFloat4(&qRotation);
