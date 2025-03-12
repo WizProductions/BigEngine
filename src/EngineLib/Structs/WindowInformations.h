@@ -4,21 +4,36 @@
 //##-------------------------- FORWARD DECLARATIONS --------------------------##
 //##############################################################################
 
-struct Entity;
+//struct X;
 
 //##############################################################################
 //##-------------------------------- STRUCTURE -------------------------------##
 //##############################################################################
 
-struct CollidingResult {
-	bool result = false;
-	DirectX::XMFLOAT3 normal = {0.f, 0.f, 0.f};
-	Entity* entityCollided = nullptr;
-	float penetrationDepth = 0.f;
+struct WindowInformations {
+
+/*-----------< ATTRIBUTES >-----------*/
+
+	UINT width;
+	UINT height;
+	HWND m_MainWindowHandle = nullptr; // main window handle
+	bool minimized = false;  // is the application minimized?
+	bool maximized = false;  // is the application maximized?
+	bool resizing = false;   // are the resize bars being dragged?
+	bool fullscreen = false;// fullscreen enabled
+
+/*------------------------------------*/
+
+
+/*----------< CONSTRUCTORS >----------*/
+	WindowInformations() = default;
+	~WindowInformations() = default;
+/*------------------------------------*/
+
 };
 
 //##############################################################################
 //##---------------------------- STREAM OPERATOR -----------------------------##
 //##############################################################################
 
-std::ostream& operator<<(std::ostream& os, const CollidingResult& collidingResult);
+std::ostream& operator<<(std::ostream& os, const WindowInformations& _WindowInformations);

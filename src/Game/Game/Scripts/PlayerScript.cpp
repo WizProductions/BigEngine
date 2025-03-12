@@ -60,3 +60,47 @@ void PlayerScript::Move(const Wiz::Key key) {
 	entityTransform.SetPosition(newPosition);
 	
 }
+
+void PlayerScript::OnMouseMove(const Wiz::Key key) {
+
+	const auto cameraC = CameraSystem::Get().GetSelectedCamera();
+	
+	if (!cameraC)
+		return;
+
+	bool mouseLockedInWindow = DirectXWindowManager::Get().GetLockMouseInWindow();
+	const POINT lastMousePos = Wiz::InputsManager::Get().GetLastMousePosition();
+
+	if (key == Wiz::Key::MOUSE_LEFT || mouseLockedInWindow) {
+ 
+		constexpr float sensitivity = 0.1f;
+
+		float dx = sensitivity * static_cast<float>(lastMousePos.x - m_LastMousePos.x);
+		float dy = sensitivity * static_cast<float>(lastMousePos.y - m_LastMousePos.y);
+		
+		std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
+    	
+		cameraC->m_AttachedEntity->m_Transform.LocalRotate(dy, dx, 0.f);
+    	
+		std::cout << cameraC->m_Transform.Print(false, true) << std::endl; //{LOG}
+		std::cout << cameraC->m_AttachedEntity->m_Transform.Print(false, true) << std::endl; //{LOG}
+	}
+	
+	else if (key == Wiz::Key::MOUSE_RIGHT) {
+
+		constexpr float moveSpeed = 0.1f;
+		const float deltaMove = moveSpeed * static_cast<float>(lastMousePos.y - m_LastMousePos.y);
+
+		cameraC->m_DistToEntity += deltaMove;
+    	
+		std::cout << cameraC->m_Transform.Print() << std::endl; //{LOG}
+	}
+
+	if (!mouseLockedInWindow) {
+		m_LastMousePos = lastMousePos;
+	}
+	else {
+		m_LastMousePos.x = HALF_WINDOW_WIDTH;
+		m_LastMousePos.y = HALF_WINDOW_HEIGHT;
+	}
+}

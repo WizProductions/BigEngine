@@ -22,7 +22,7 @@ private:
 	bool* m_AppIsPausedPtr;
 
 	HINSTANCE m_hAppInst = nullptr; // application instance handle
-	HWND m_hMainWnd = nullptr; // main window handle
+	HWND	  m_MainWindowHandle = nullptr; // main window handle
 	bool      m_Minimized = false;  // is the application minimized?
 	bool      m_Maximized = false;  // is the application maximized?
 	bool      m_Resizing = false;   // are the resize bars being dragged?
@@ -165,6 +165,7 @@ public:
 	GETTER D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilView() { return m_DsvHeap->GetCPUDescriptorHandleForHeapStart(); }
 	GETTER ID3D12Resource* CurrentBackBuffer() { return m_SwapChainBuffer[m_CurrBackBuffer]; }
 	GETTER bool GetLockMouseInWindow() const { return m_lockMouseInWindow; }
+	GETTER HWND GetMainWindowHandle() const { return m_MainWindowHandle; }
 
 	/* SETTERS */
 

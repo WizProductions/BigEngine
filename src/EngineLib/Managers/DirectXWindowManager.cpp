@@ -46,7 +46,7 @@ void DirectXWindowManager::Update() {
 		RECT rect;
 		int offsetX = 8;
 		int offsetY = 8;
-		GetWindowRect(m_hMainWnd, &rect);
+		GetWindowRect(m_MainWindowHandle, &rect);
 		SetCursorPos(rect.left + offsetX + HALF_WINDOW_WIDTH, rect.top + offsetY + HALF_WINDOW_HEIGHT);
 	}
 	
@@ -370,15 +370,15 @@ bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT
 	const int width = rect.right - rect.left;
 	const int height = rect.bottom - rect.top;
 
-	m_hMainWnd = CreateWindow(L"MainWnd", WINDOW_TITLE, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, m_hAppInst, 0);
-	if (!m_hMainWnd)
+	m_MainWindowHandle = CreateWindow(L"MainWnd", WINDOW_TITLE, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, m_hAppInst, 0);
+	if (!m_MainWindowHandle)
 	{
 		MessageBox(nullptr, L"CreateWindow Failed.", nullptr, 0);
 		return false;
 	}
 
-	ShowWindow(m_hMainWnd, SW_SHOW);
-	UpdateWindow(m_hMainWnd);
+	ShowWindow(m_MainWindowHandle, SW_SHOW);
+	UpdateWindow(m_MainWindowHandle);
 	return true;
 }
 
@@ -505,7 +505,7 @@ void DirectXWindowManager::CreateSwapChain() {
 	sd.SampleDesc.Quality = 0; //MSAA disabled
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = SwapChainBufferCount;
-	sd.OutputWindow = m_hMainWnd;
+	sd.OutputWindow = m_MainWindowHandle;
 	sd.Windowed = true;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -1040,7 +1040,7 @@ void DirectXWindowManager::CalculateFrameStats()
 			L" fps: " + fpsStr +
 			L" mspf: " + mspfStr;
 
-		SetWindowText(m_hMainWnd, windowText.c_str());
+		SetWindowText(m_MainWindowHandle, windowText.c_str());
 
 		// Reset for next average.
 		frameCnt = 0;
@@ -1163,7 +1163,7 @@ void DirectXWindowManager::OnResize() {
 void DirectXWindowManager::OnMouseDown(WPARAM btnState, int x, int y) {
 	m_LastMousePos.x = x;
 	m_LastMousePos.y = y;
-	SetCapture(m_hMainWnd);
+	SetCapture(m_MainWindowHandle);
 }
 
 void DirectXWindowManager::OnMouseUp(WPARAM btnState, int x, int y) {
