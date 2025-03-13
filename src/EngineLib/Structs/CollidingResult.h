@@ -10,7 +10,7 @@ struct Entity;
 //##-------------------------------- STRUCTURE -------------------------------##
 //##############################################################################
 
-struct CollidingResult {
+struct CollidingResult final {
 	bool result = false;
 	DirectX::XMFLOAT3 normal = {0.f, 0.f, 0.f};
 	Entity* entityCollided = nullptr;

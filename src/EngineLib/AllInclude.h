@@ -47,6 +47,7 @@
 
 //Structs
 #include <Structs/CollidingResult.h>
+#include <Structs/WindowInformation.h>
 
 //Managers
 #include <Managers/ApplicationManager.h>

@@ -1,5 +1,6 @@
 #pragma once
 
+struct WindowInformation;
 class GameTimer;
 struct IDXGIFactory4;
 struct IDXGISwapChain;
@@ -20,13 +21,8 @@ private:
 	/* Pointers to real variables into another classes */
 	GameTimer* m_TimerPtr;
 	bool* m_AppIsPausedPtr;
-
+	
 	HINSTANCE m_hAppInst = nullptr; // application instance handle
-	HWND	  m_MainWindowHandle = nullptr; // main window handle
-	bool      m_Minimized = false;  // is the application minimized?
-	bool      m_Maximized = false;  // is the application maximized?
-	bool      m_Resizing = false;   // are the resize bars being dragged?
-	bool      m_FullscreenState = false;// fullscreen enabled
 
 	IDXGIFactory4* m_Factory;
 	ID3D12Device* m_Device;
@@ -131,12 +127,7 @@ private:
 
 public:
 
-	inline static UINT16 WINDOW_WIDTH = 720;
-	INT HALF_WINDOW_WIDTH = 360;
-	inline static UINT16 WINDOW_HEIGHT = 480;
-	INT HALF_WINDOW_HEIGHT = 240;
-	inline static LPCWSTR WINDOW_TITLE = L"Engine";
-	inline static UINT16 WINDOW_GRAPHICS_MAX_FPS = 60;
+	inline static WindowInformation* m_WindowInformationPtr = nullptr;
 	UINT mCurrFrameResourceIndex = 0;
 
 private:
@@ -161,11 +152,11 @@ public:
 	/* GETTERS */
 
 	_NODISCARD static DirectXWindowManager& Get();
-	GETTER float GetAspectRatio() const { return static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT; }
+	GETTER float GetAspectRatio() const { return m_WindowInformationPtr->aspectRatio; }
 	GETTER D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilView() { return m_DsvHeap->GetCPUDescriptorHandleForHeapStart(); }
 	GETTER ID3D12Resource* CurrentBackBuffer() { return m_SwapChainBuffer[m_CurrBackBuffer]; }
 	GETTER bool GetLockMouseInWindow() const { return m_lockMouseInWindow; }
-	GETTER HWND GetMainWindowHandle() const { return m_MainWindowHandle; }
+	GETTER const WindowInformation& GetWindowInformation() const { return *m_WindowInformationPtr; }
 
 	/* SETTERS */
 

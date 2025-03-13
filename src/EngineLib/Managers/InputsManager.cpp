@@ -90,10 +90,11 @@ Wiz::KeyEventStructure& Wiz::InputsManager::GetKeyEventStructure(Key key) {
 
 POINT Wiz::InputsManager::GetLastMousePosition(const bool clampedCoord) const {
 
+	WindowInformation* pWindowInformation = DirectXWindowManager::m_WindowInformationPtr;
 	if (clampedCoord) {
 		const POINT clampedPos = {
-			clamp(m_LastMousePosition.x, 0, DirectXWindowManager::WINDOW_WIDTH),
-			clamp(m_LastMousePosition.y, 0, DirectXWindowManager::WINDOW_HEIGHT)
+			clamp((m_LastMousePosition.x - pWindowInformation->firstPixelPosition.x), 0, pWindowInformation->width),
+			clamp((m_LastMousePosition.y - pWindowInformation->firstPixelPosition.y), 0, pWindowInformation->height)
 		};
 
 		return clampedPos;

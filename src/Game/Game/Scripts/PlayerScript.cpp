@@ -100,7 +100,8 @@ void PlayerScript::OnMouseMove(const Wiz::Key key) {
 		m_LastMousePos = lastMousePos;
 	}
 	else {
-		m_LastMousePos.x = HALF_WINDOW_WIDTH;
-		m_LastMousePos.y = HALF_WINDOW_HEIGHT;
+		WindowInformation windowInfos = DirectXWindowManager::Get().GetWindowInformation();
+		m_LastMousePos.x = windowInfos.halfWidth;
+		m_LastMousePos.y = windowInfos.halfHeight;
 	}
 }

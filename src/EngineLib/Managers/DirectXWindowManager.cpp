@@ -17,6 +17,7 @@ bool DirectXWindowManager::Init(UINT16 windowWidth, UINT16 windowHeight, LPCWSTR
 	ApplicationManager& app = *ApplicationManager::Get();
 	INIT_PTR(m_TimerPtr, &app.GetTimer());
 	INIT_PTR(m_AppIsPausedPtr, &app.AppIsPaused());
+	INIT_NEW_PTR(m_WindowInformationPtr, WindowInformation());
 
 	InitializeWindow(windowWidth, windowHeight, windowTitle);
 	InitializeDirectX3D();
@@ -31,6 +32,8 @@ void DirectXWindowManager::UnInit() {
 	if (m_Device)
 		FlushCommandQueue();
 
+	UNINIT_PTR(m_WindowInformationPtr);
+
 	m_Initialized = false;
 }
 
@@ -43,11 +46,10 @@ void DirectXWindowManager::Update() {
 
 	if (m_lockMouseInWindow) {
 		
-		RECT rect;
-		int offsetX = 8;
-		int offsetY = 8;
-		GetWindowRect(m_MainWindowHandle, &rect);
-		SetCursorPos(rect.left + offsetX + HALF_WINDOW_WIDTH, rect.top + offsetY + HALF_WINDOW_HEIGHT);
+		SetCursorPos(
+			m_WindowInformationPtr->firstPixelPosition.x + m_WindowInformationPtr->halfWidth
+			, m_WindowInformationPtr->firstPixelPosition.y + m_WindowInformationPtr->halfHeight
+			);
 	}
 	
 	// // Convert Spherical to Cartesian coordinates.
@@ -215,8 +217,13 @@ LRESULT DirectXWindowManager::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 	switch (msg)
 	{
 		// WM_ACTIVATE is sent when the window is activated or deactivated.  
-		// We pause the game when the window is deactivated and unpause it 
-		// when it becomes active.  
+		// We pause the game when the window is deactivated and unpause it 0
+		// when it becomes active.
+
+	case WM_MOVE:
+		m_WindowInformationPtr->UpdateFirstPixelPosition();
+		return 0;
+		
 	case WM_ACTIVATE:
 		if (LOWORD(wParam) == WA_INACTIVE)
 		{
@@ -230,47 +237,47 @@ LRESULT DirectXWindowManager::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 		}
 		return 0;
 
+
+
 		// WM_SIZE is sent when the user resizes the window.  
 	case WM_SIZE:
 		// Save the new client area dimensions.
-		DirectXWindowManager::WINDOW_WIDTH = LOWORD(lParam);
-		HALF_WINDOW_WIDTH = WINDOW_WIDTH / 2;
-		DirectXWindowManager::WINDOW_HEIGHT = HIWORD(lParam);
-		HALF_WINDOW_HEIGHT = WINDOW_HEIGHT / 2;
+		m_WindowInformationPtr->UpdateWindowSize(LOWORD(lParam), HIWORD(lParam));
+		
 		if (m_Device)
 		{
 			if (wParam == SIZE_MINIMIZED)
 			{
 				*m_AppIsPausedPtr = true;
-				m_Minimized = true;
-				m_Maximized = false;
+				m_WindowInformationPtr->minimized = true;
+				m_WindowInformationPtr->maximized = false;
 			}
 			else if (wParam == SIZE_MAXIMIZED)
 			{
 				*m_AppIsPausedPtr = false;
-				m_Minimized = false;
-				m_Maximized = true;
+				m_WindowInformationPtr->minimized = false;
+				m_WindowInformationPtr->maximized = true;
 				OnResize();
 			}
 			else if (wParam == SIZE_RESTORED)
 			{
 
 				// Restoring from minimized state?
-				if (m_Minimized)
+				if (m_WindowInformationPtr->minimized)
 				{
 					*m_AppIsPausedPtr = false;
-					m_Minimized = false;
+					m_WindowInformationPtr->minimized = false;
 					OnResize();
 				}
 
 				// Restoring from maximized state?
-				else if (m_Maximized)
+				else if (m_WindowInformationPtr->maximized)
 				{
 					*m_AppIsPausedPtr = false;
-					m_Maximized = false;
+					m_WindowInformationPtr->maximized = false;
 					OnResize();
 				}
-				else if (m_Resizing)
+				else if (m_WindowInformationPtr->resizing)
 				{
 					// If user is dragging the resize bars, we do not resize 
 					// the buffers here because as the user continuously 
@@ -342,9 +349,9 @@ LRESULT DirectXWindowManager::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
 bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT16 windowHeight, const LPCWSTR windowTitle) {
 
-	WINDOW_WIDTH = windowWidth;
-	WINDOW_HEIGHT = windowHeight;
-	WINDOW_TITLE = windowTitle;
+	m_WindowInformationPtr->width = windowWidth;
+	m_WindowInformationPtr->height = windowHeight;
+	m_WindowInformationPtr->title = windowTitle;
 
 	WNDCLASS wc = {};
 	wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -365,20 +372,20 @@ bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT
 	}
 
 	// Compute window rectangle dimensions based on requested client area dimensions.
-	RECT rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	RECT rect = { 0, 0, m_WindowInformationPtr->width, m_WindowInformationPtr->height };
 	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, false);
 	const int width = rect.right - rect.left;
 	const int height = rect.bottom - rect.top;
 
-	m_MainWindowHandle = CreateWindow(L"MainWnd", WINDOW_TITLE, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, m_hAppInst, 0);
-	if (!m_MainWindowHandle)
+	m_WindowInformationPtr->mainWindowHandle = CreateWindow(L"MainWnd", m_WindowInformationPtr->title, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, m_hAppInst, 0);
+	if (!m_WindowInformationPtr->mainWindowHandle)
 	{
 		MessageBox(nullptr, L"CreateWindow Failed.", nullptr, 0);
 		return false;
 	}
 
-	ShowWindow(m_MainWindowHandle, SW_SHOW);
-	UpdateWindow(m_MainWindowHandle);
+	ShowWindow(m_WindowInformationPtr->mainWindowHandle, SW_SHOW);
+	UpdateWindow(m_WindowInformationPtr->mainWindowHandle);
 	return true;
 }
 
@@ -494,8 +501,8 @@ void DirectXWindowManager::CreateSwapChain() {
 		m_SwapChain->Release();
 	m_SwapChain = nullptr;
 	DXGI_SWAP_CHAIN_DESC sd;
-	sd.BufferDesc.Width = WINDOW_WIDTH;
-	sd.BufferDesc.Height = WINDOW_HEIGHT;
+	sd.BufferDesc.Width = m_WindowInformationPtr->width;
+	sd.BufferDesc.Height = m_WindowInformationPtr->height;
 	sd.BufferDesc.RefreshRate.Numerator = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
 	sd.BufferDesc.Format = m_BackBufferFormat;
@@ -505,7 +512,7 @@ void DirectXWindowManager::CreateSwapChain() {
 	sd.SampleDesc.Quality = 0; //MSAA disabled
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = SwapChainBufferCount;
-	sd.OutputWindow = m_MainWindowHandle;
+	sd.OutputWindow = m_WindowInformationPtr->mainWindowHandle;
 	sd.Windowed = true;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -562,8 +569,8 @@ void DirectXWindowManager::CreateCommittedResource() {
 	D3D12_RESOURCE_DESC depthStencilDesc;
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
-	depthStencilDesc.Width = WINDOW_WIDTH;
-	depthStencilDesc.Height = WINDOW_HEIGHT;
+	depthStencilDesc.Width = m_WindowInformationPtr->width;
+	depthStencilDesc.Height = m_WindowInformationPtr->height;
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
 	depthStencilDesc.Format = mDepthStencilFormat;
@@ -689,8 +696,8 @@ void DirectXWindowManager::BuildRootSignature() {
 void DirectXWindowManager::BuildShadersAndInputLayout() {
 	HRESULT hr = S_OK;
 
-	m_vsByteCode = d3dUtil::CompileShader(L"..\\..\\..\\src\\EngineDev\\Shaders\\color.hlsl", nullptr, "VS", "vs_5_0").Get();
-	m_psByteCode = d3dUtil::CompileShader(L"..\\..\\..\\src\\EngineDev\\Shaders\\color.hlsl", nullptr, "PS", "ps_5_0").Get();
+	m_vsByteCode = d3dUtil::CompileShader(L"..\\..\\..\\src\\EngineLib\\Shaders\\color.hlsl", nullptr, "VS", "vs_5_0").Get();
+	m_psByteCode = d3dUtil::CompileShader(L"..\\..\\..\\src\\EngineLib\\Shaders\\color.hlsl", nullptr, "PS", "ps_5_0").Get();
 
 	m_InputLayout =
 	{
@@ -1036,11 +1043,11 @@ void DirectXWindowManager::CalculateFrameStats()
 		float mspf = 1000.0f / fps;
 		std::wstring fpsStr = std::to_wstring(fps);
 		std::wstring mspfStr = std::to_wstring(mspf);
-		std::wstring windowText = std::wstring(WINDOW_TITLE) +
+		std::wstring windowText = std::wstring(m_WindowInformationPtr->title) +
 			L" fps: " + fpsStr +
 			L" mspf: " + mspfStr;
 
-		SetWindowText(m_MainWindowHandle, windowText.c_str());
+		SetWindowText(m_WindowInformationPtr->mainWindowHandle, windowText.c_str());
 
 		// Reset for next average.
 		frameCnt = 0;
@@ -1076,7 +1083,7 @@ void DirectXWindowManager::OnResize() {
 	// Resize the swap chain.
 	ThrowIfFailed(m_SwapChain->ResizeBuffers(
 		SwapChainBufferCount,
-		WINDOW_WIDTH, WINDOW_HEIGHT,
+		m_WindowInformationPtr->width, m_WindowInformationPtr->height,
 		m_BackBufferFormat,
 		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 
@@ -1094,8 +1101,8 @@ void DirectXWindowManager::OnResize() {
 	D3D12_RESOURCE_DESC depthStencilDesc;
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
-	depthStencilDesc.Width = WINDOW_WIDTH;
-	depthStencilDesc.Height = WINDOW_HEIGHT;
+	depthStencilDesc.Width = m_WindowInformationPtr->width;
+	depthStencilDesc.Height = m_WindowInformationPtr->height;
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
 
@@ -1147,23 +1154,23 @@ void DirectXWindowManager::OnResize() {
 	// Update the viewport transform to cover the client area.
 	mScreenViewport.TopLeftX = 0;
 	mScreenViewport.TopLeftY = 0;
-	mScreenViewport.Width = static_cast<float>(WINDOW_WIDTH);
-	mScreenViewport.Height = static_cast<float>(WINDOW_HEIGHT);
+	mScreenViewport.Width = static_cast<float>(m_WindowInformationPtr->width);
+	mScreenViewport.Height = static_cast<float>(m_WindowInformationPtr->height);
 	mScreenViewport.MinDepth = 0.0f;
 	mScreenViewport.MaxDepth = 1.0f;
 
-	mScissorRect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+	mScissorRect = { 0, 0, m_WindowInformationPtr->width, m_WindowInformationPtr->height };
 
 	// Ajouter après la définition du scissor rect :
 	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * XM_PI, this->GetAspectRatio(), 1.0f, 1000.0f);
 	XMStoreFloat4x4(&m_Proj, P);
+
+	m_WindowInformationPtr->UpdateFirstPixelPosition();
 }
 
 
 void DirectXWindowManager::OnMouseDown(WPARAM btnState, int x, int y) {
-	m_LastMousePos.x = x;
-	m_LastMousePos.y = y;
-	SetCapture(m_MainWindowHandle);
+	SetCapture(m_WindowInformationPtr->mainWindowHandle);
 }
 
 void DirectXWindowManager::OnMouseUp(WPARAM btnState, int x, int y) {
@@ -1173,13 +1180,20 @@ void DirectXWindowManager::OnMouseUp(WPARAM btnState, int x, int y) {
 void DirectXWindowManager::OnMouseMove(WPARAM btnState, int x, int y) {
 	
     const auto cameraC = CameraSystem::Get().GetSelectedCamera();
-	
     if (!cameraC)
     	return;
 
-	const POINT lastMousePos = Wiz::InputsManager::Get().GetLastMousePosition();
+	const POINT lastMousePos = Wiz::InputsManager::Get().GetLastMousePosition(true);
 	x = lastMousePos.x;
 	y = lastMousePos.y;
+
+	x+= m_WindowInformationPtr->firstPixelPosition.x;
+	y+= m_WindowInformationPtr->firstPixelPosition.y;
+
+	std::cout << "OnMouseMove()" << std::endl; //{LOG}
+	std::cout << "OldX: " << m_LastMousePos.x << " OldY: " << m_LastMousePos.y << std::endl; //{LOG}
+	std::cout << "NewX: " << x << " NewY: " << y << std::endl; //{LOG}
+
 
     if ((btnState & MK_LBUTTON) != 0 || m_lockMouseInWindow) {
  
@@ -1187,14 +1201,18 @@ void DirectXWindowManager::OnMouseMove(WPARAM btnState, int x, int y) {
 
         float dx = sensitivity * static_cast<float>(x - m_LastMousePos.x);
         float dy = sensitivity * static_cast<float>(y - m_LastMousePos.y);
-
-    	//abs(dx) < abs(dy) ? dx = 0 : dy = 0;
+    	
     	std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
+
+    	/* Y axes reverted */
+    	XMVECTOR vUp = cameraC->m_Transform.GetUpVector();
+    	float allUpAxesSum = XMVectorGetX(vUp) + XMVectorGetY(vUp) + XMVectorGetZ(vUp);
+    	dx *= (allUpAxesSum > 0.f ? 1.f : -1.f);
+    	//TODO: Problem when the sum near 0 because the result switch + => - => + => - ...
     	
     	cameraC->m_AttachedEntity->m_Transform.LocalRotate(dy, dx, 0.f);
     	
     	std::cout << cameraC->m_Transform.Print(false, true) << std::endl; //{LOG}
-    	std::cout << cameraC->m_AttachedEntity->m_Transform.Print(false, true) << std::endl; //{LOG}
     }
 	
     if ((btnState & MK_RBUTTON) != 0) {
@@ -1212,8 +1230,9 @@ void DirectXWindowManager::OnMouseMove(WPARAM btnState, int x, int y) {
 		m_LastMousePos.y = y;
 	}
 	else {
-		m_LastMousePos.x = HALF_WINDOW_WIDTH;
-		m_LastMousePos.y = HALF_WINDOW_HEIGHT;
+		m_WindowInformationPtr->UpdateFirstPixelPosition();
+		m_LastMousePos.x = m_WindowInformationPtr->firstPixelPosition.x + m_WindowInformationPtr->halfWidth;
+		m_LastMousePos.y = m_WindowInformationPtr->firstPixelPosition.y + m_WindowInformationPtr->halfHeight;
 	}
 }
 
