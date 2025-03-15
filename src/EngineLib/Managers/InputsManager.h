@@ -28,6 +28,7 @@ enum class Key : unsigned char {
 	MOUSE_LEFT = 0x01,
 	MOUSE_RIGHT = 0x02,
 	MOUSE_MIDDLE = 0x04,
+	MOUSE_MOVING = 0x05,
 
 	// Alphabet Keys
 	A = 0x41, B = 0x42, C = 0x43, D = 0x44, E = 0x45, F = 0x46,
@@ -116,6 +117,7 @@ private:
 	std::array<KeyEventStructure, 256> m_KeyEventStructuresTable; // o(1) access time
 
 	POINT m_LastMousePosition = {0, 0};
+	bool m_MouseMoved;
 
 	//#############################################################################
 	//##--------------------------------- CLASS ---------------------------------##
@@ -144,6 +146,7 @@ public:
 	_NODISCARD POINT GetLastMousePosition(bool clampedCoord = true) const;
 	_NODISCARD bool IsPressed(Key key);
 	GETTER bool IsKeyState(const Key key, const KeyState keyState) { return (this->GetKeyState(key) == keyState); }
+	GETTER bool IsMouseMoved() const { return m_MouseMoved; }
 
 	
 	/* SETTERS */
@@ -159,6 +162,10 @@ public:
 
 	void CaptureKey(Key key);
 	void CaptureAllKeys();
+
+	/** Check if mouse moved & store new mouse position */
+	void CheckMouseMoved();
+	
 
 };
 }

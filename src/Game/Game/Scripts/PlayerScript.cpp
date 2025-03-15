@@ -14,6 +14,7 @@ void PlayerScript::Update() {
 	m_InputsManager->RegisterEventToKey(Wiz::Key::D, Wiz::KeyState::HELD, [this](const Wiz::Key key) { this->Move(key); });
 	m_InputsManager->RegisterEventToKey(Wiz::Key::S, Wiz::KeyState::HELD, [this](const Wiz::Key key) { this->Move(key); });
 	m_InputsManager->RegisterEventToKey(Wiz::Key::Q, Wiz::KeyState::HELD, [this](const Wiz::Key key) { this->Move(key); });
+	m_InputsManager->RegisterEventToKey(Wiz::Key::MOUSE_MOVING, Wiz::KeyState::HELD, [this](const Wiz::Key key) { this->OnMouseMove(key); });
 }
 
 void PlayerScript::End() {
@@ -63,30 +64,44 @@ void PlayerScript::Move(const Wiz::Key key) {
 
 void PlayerScript::OnMouseMove(const Wiz::Key key) {
 
+	std::cout << "called" << std::endl;
+
 	const auto cameraC = CameraSystem::Get().GetSelectedCamera();
 	
 	if (!cameraC)
 		return;
 
 	bool mouseLockedInWindow = DirectXWindowManager::Get().GetLockMouseInWindow();
-	const POINT lastMousePos = Wiz::InputsManager::Get().GetLastMousePosition();
+	POINT lastMousePos = Wiz::InputsManager::Get().GetLastMousePosition();
 
-	if (key == Wiz::Key::MOUSE_LEFT || mouseLockedInWindow) {
+	lastMousePos.x+= DirectXWindowManager::m_WindowInformationPtr->firstPixelPosition.x;
+	lastMousePos.y+= DirectXWindowManager::m_WindowInformationPtr->firstPixelPosition.y;
+	
+	// std::cout << "OnMouseMove()" << std::endl; //{LOG}
+	// std::cout << "OldX: " << m_LastMousePos.x << " OldY: " << m_LastMousePos.y << std::endl; //{LOG}
+	// std::cout << "NewX: " << lastMousePos.x << " NewY: " << lastMousePos.y << std::endl; //{LOG}
+
+	if (Wiz::InputsManager::Get().IsPressed(Wiz::Key::MOUSE_LEFT) || mouseLockedInWindow) {
  
-		constexpr float sensitivity = 0.1f;
+		constexpr float sensitivity = 0.025f;
 
 		float dx = sensitivity * static_cast<float>(lastMousePos.x - m_LastMousePos.x);
 		float dy = sensitivity * static_cast<float>(lastMousePos.y - m_LastMousePos.y);
-		
-		std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
+    	
+		//std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
+
+		/* Y axes reverted */
+		XMVECTOR vUp = cameraC->m_Transform.GetUpVector();
+		float allUpAxesSum = XMVectorGetX(vUp) + XMVectorGetY(vUp) + XMVectorGetZ(vUp);
+		dx *= (allUpAxesSum > 0.f ? 1.f : -1.f);
+		//TODO: Problem when the sum near 0 because the result switch + => - => + => - ...
     	
 		cameraC->m_AttachedEntity->m_Transform.LocalRotate(dy, dx, 0.f);
     	
 		std::cout << cameraC->m_Transform.Print(false, true) << std::endl; //{LOG}
-		std::cout << cameraC->m_AttachedEntity->m_Transform.Print(false, true) << std::endl; //{LOG}
 	}
 	
-	else if (key == Wiz::Key::MOUSE_RIGHT) {
+	else if (Wiz::InputsManager::Get().IsPressed(Wiz::Key::MOUSE_RIGHT)) {
 
 		constexpr float moveSpeed = 0.1f;
 		const float deltaMove = moveSpeed * static_cast<float>(lastMousePos.y - m_LastMousePos.y);
@@ -100,8 +115,8 @@ void PlayerScript::OnMouseMove(const Wiz::Key key) {
 		m_LastMousePos = lastMousePos;
 	}
 	else {
-		WindowInformation windowInfos = DirectXWindowManager::Get().GetWindowInformation();
-		m_LastMousePos.x = windowInfos.halfWidth;
-		m_LastMousePos.y = windowInfos.halfHeight;
+		DirectXWindowManager::m_WindowInformationPtr->UpdateFirstPixelPosition();
+		m_LastMousePos.x = DirectXWindowManager::m_WindowInformationPtr->firstPixelPosition.x + DirectXWindowManager::m_WindowInformationPtr->halfWidth;
+		m_LastMousePos.y = DirectXWindowManager::m_WindowInformationPtr->firstPixelPosition.y + DirectXWindowManager::m_WindowInformationPtr->halfHeight;
 	}
 }

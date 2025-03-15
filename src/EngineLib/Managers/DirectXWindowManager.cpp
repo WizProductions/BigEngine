@@ -328,7 +328,6 @@ LRESULT DirectXWindowManager::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.x = 200;
 		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.y = 200;
 		return 0;
-
 	case WM_LBUTTONDOWN:
 	case WM_MBUTTONDOWN:
 	case WM_RBUTTONDOWN:
@@ -338,9 +337,6 @@ LRESULT DirectXWindowManager::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 	case WM_MBUTTONUP:
 	case WM_RBUTTONUP:
 		OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-		return 0;
-	case WM_MOUSEMOVE:
-		OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return 0;
 	}
 
@@ -844,28 +840,6 @@ void DirectXWindowManager::InitializePyramidSquaredGeo()
 {
 	std::array<Vertex, 5> vertices =
 	{
-		// v1 up
-		//Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White)}),  // 0
-		//Vertex({ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Red) }),     // 1
-		////
-		//Vertex({ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT4(Colors::Magenta) }),    // 2
-		//Vertex({ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT4(Colors::Green) }),    // 3
-
-		//////sommet
-		//Vertex({ XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT4(Colors::Blue) })       // 4
-
-
-		// v2 right side // not complete // false coordinate for the moment
-		//Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),  // 0
-		//Vertex({ XMFLOAT3(-1.0f, 0.0f, -1.0f), XMFLOAT4(Colors::Red) }),     // 1
-
-		//Vertex({ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT4(Colors::Magenta) }),    // 2
-		//Vertex({ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),    // 3
-
-		////sommet
-		//Vertex({ XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT4(Colors::Blue) })       // 4
-
-
 		// v3 back side
 		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),  // 0
 		Vertex({ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(Colors::Red) }),     // 1
@@ -932,21 +906,6 @@ void DirectXWindowManager::InitializePyramidSquaredGeo()
 	m_Geometries["prisme_triangle_carre"] = m_pPyramidSquaredGeo;
 }
 
-
-//void DirectXWindowManager::BuildShadersAndInputLayout()
-//{
-//	m_vsByteCode["standardVS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_1");
-//	m_vsByteCode["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_1");
-//
-//	m_InputLayout =
-//	{
-//		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-//		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-//	};
-//}
-
-
-
 void DirectXWindowManager::BuildPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
@@ -974,14 +933,6 @@ void DirectXWindowManager::BuildPSO()
 	psoDesc.SampleDesc.Quality = 0; //m4xMsaaState ? (m4xMsaaQuality - 1) : 0;  //MSAA disabled
 	psoDesc.DSVFormat = mDepthStencilFormat;
 	ThrowIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSO)));
-
-	//
-	// PSO for opaque wireframe objects.
-	//
-
-	/*D3D12_GRAPHICS_PIPELINE_STATE_DESC opaqueWireframePsoDesc = psoDesc;
-	opaqueWireframePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-	ThrowIfFailed(m_Device->CreateGraphicsPipelineState(&opaqueWireframePsoDesc, IID_PPV_ARGS(&m_PSO["opaque_wireframe"])));*/
 }
 
 void DirectXWindowManager::FlushCommandQueue() {
@@ -1022,18 +973,11 @@ bool DirectXWindowManager::CheckMSAASupport() {
 		sizeof(msQualityLevels))
 	);
 
-	//m4xMsaaQuality = msQualityLevels.NumQualityLevels;
-	//assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
-
 	return true;
 }
 
 void DirectXWindowManager::CalculateFrameStats()
 {
-	// Code computes the average frames per second, and also the 
-	// average time it takes to render one frame. These stats 
-	// are appended to the window caption bar.
-
 	static int frameCnt = 0;
 	static float timeElapsed = 0.0f;
 	frameCnt++;
@@ -1105,12 +1049,6 @@ void DirectXWindowManager::OnResize() {
 	depthStencilDesc.Height = m_WindowInformationPtr->height;
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
-
-	// Correction 11/12/2016: SSAO chapter requires an SRV to the depth buffer to read from 
-	// the depth buffer.  Therefore, because we need to create two views to the same resource:
-	//   1. SRV format: DXGI_FORMAT_R24_UNORM_X8_TYPELESS
-	//   2. DSV Format: DXGI_FORMAT_D24_UNORM_S8_UINT
-	// we need to create the depth buffer resource with a typeless format.  
 	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 
 	depthStencilDesc.SampleDesc.Count = 1; //NO MSAA
@@ -1170,70 +1108,11 @@ void DirectXWindowManager::OnResize() {
 
 
 void DirectXWindowManager::OnMouseDown(WPARAM btnState, int x, int y) {
-	SetCapture(m_WindowInformationPtr->mainWindowHandle);
+	SetCapture(m_WindowInformationPtr->mainWindowHandle); //A mettre dans une classe annexes
 }
 
 void DirectXWindowManager::OnMouseUp(WPARAM btnState, int x, int y) {
 	ReleaseCapture();
-}
-
-void DirectXWindowManager::OnMouseMove(WPARAM btnState, int x, int y) {
-	
-    const auto cameraC = CameraSystem::Get().GetSelectedCamera();
-    if (!cameraC)
-    	return;
-
-	const POINT lastMousePos = Wiz::InputsManager::Get().GetLastMousePosition(true);
-	x = lastMousePos.x;
-	y = lastMousePos.y;
-
-	x+= m_WindowInformationPtr->firstPixelPosition.x;
-	y+= m_WindowInformationPtr->firstPixelPosition.y;
-
-	std::cout << "OnMouseMove()" << std::endl; //{LOG}
-	std::cout << "OldX: " << m_LastMousePos.x << " OldY: " << m_LastMousePos.y << std::endl; //{LOG}
-	std::cout << "NewX: " << x << " NewY: " << y << std::endl; //{LOG}
-
-
-    if ((btnState & MK_LBUTTON) != 0 || m_lockMouseInWindow) {
- 
-        constexpr float sensitivity = 0.1f;
-
-        float dx = sensitivity * static_cast<float>(x - m_LastMousePos.x);
-        float dy = sensitivity * static_cast<float>(y - m_LastMousePos.y);
-    	
-    	std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
-
-    	/* Y axes reverted */
-    	XMVECTOR vUp = cameraC->m_Transform.GetUpVector();
-    	float allUpAxesSum = XMVectorGetX(vUp) + XMVectorGetY(vUp) + XMVectorGetZ(vUp);
-    	dx *= (allUpAxesSum > 0.f ? 1.f : -1.f);
-    	//TODO: Problem when the sum near 0 because the result switch + => - => + => - ...
-    	
-    	cameraC->m_AttachedEntity->m_Transform.LocalRotate(dy, dx, 0.f);
-    	
-    	std::cout << cameraC->m_Transform.Print(false, true) << std::endl; //{LOG}
-    }
-	
-    if ((btnState & MK_RBUTTON) != 0) {
-
-    	constexpr float moveSpeed = 0.1f;
-    	const float deltaMove = moveSpeed * static_cast<float>(y - m_LastMousePos.y);
-
-    	cameraC->m_DistToEntity += deltaMove;
-    	
-    	std::cout << cameraC->m_Transform.Print() << std::endl; //{LOG}
-    }
-
-	if (!m_lockMouseInWindow) {
-		m_LastMousePos.x = x;
-		m_LastMousePos.y = y;
-	}
-	else {
-		m_WindowInformationPtr->UpdateFirstPixelPosition();
-		m_LastMousePos.x = m_WindowInformationPtr->firstPixelPosition.x + m_WindowInformationPtr->halfWidth;
-		m_LastMousePos.y = m_WindowInformationPtr->firstPixelPosition.y + m_WindowInformationPtr->halfHeight;
-	}
 }
 
 void DirectXWindowManager::BuildRenderItems()

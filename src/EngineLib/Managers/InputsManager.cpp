@@ -8,7 +8,8 @@ bool Wiz::InputsManager::Init() {
 	if (m_Initialized)
 		return false;
 
-	//m_KeyEventStructuresTable.fill(KeyEventStructure()); //Reset value but wtf 
+	//m_KeyEventStructuresTable.fill(KeyEventStructure()); //Reset value but wtf
+	m_MouseMoved = false;
 	
 	m_Initialized = true;
 	return true;
@@ -17,6 +18,7 @@ bool Wiz::InputsManager::Init() {
 void Wiz::InputsManager::UnInit() {
 	
 	m_KeyEventStructuresTable = {};
+	m_MouseMoved = false;
 	m_Initialized = false;
 }
 
@@ -64,13 +66,30 @@ void Wiz::InputsManager::CaptureKey(const Key key) {
 	}
 }
 
+void Wiz::InputsManager::CheckMouseMoved() {
+
+	POINT previousMousePos = m_LastMousePosition; 
+	GetCursorPos(&m_LastMousePosition); //GetMousePosition every frame
+
+	if (previousMousePos.x != m_LastMousePosition.x or previousMousePos.y != m_LastMousePosition.y) {
+		KeyEventStructure& mouseKeyEventStructure = GetKeyEventStructure(Key::MOUSE_MOVING);
+
+		m_MouseMoved = true;
+		mouseKeyEventStructure.CallEvent(mouseKeyEventStructure.m_PtrToHeldEvent, Key::MOUSE_MOVING);
+
+		return;
+	}
+
+	m_MouseMoved = false;
+}
+
 void Wiz::InputsManager::CaptureAllKeys() {
 	
 	for (size_t i(0); i < m_KeyEventStructuresTable.size(); i++) {
 		CaptureKey(static_cast<Key>(i));
 	}
 
-	GetCursorPos(&m_LastMousePosition); //GetMousePosition every frame
+	CheckMouseMoved(); //Check if mouse moved & store new mouse position
 }
 
 Wiz::InputsManager& Wiz::InputsManager::Get() {
@@ -121,6 +140,13 @@ void Wiz::InputsManager::RegisterEventToKey(const Key key, const KeyState state,
 	}
 
 	KeyEventStructure& targetKeyEventStruct = GetKeyEventStructure(key);
+
+	if (key == Key::MOUSE_MOVING) { //Mouse (Moving) is a special key
+		targetKeyEventStruct.m_PtrToHeldEvent = ptrToEvent;
+		targetKeyEventStruct.m_HeldEventPointed = true;
+
+		return;
+	}
     
 	switch (state) {
 	case KeyState::PRESSED:
@@ -145,6 +171,13 @@ void Wiz::InputsManager::RegisterEventToKey(const Key key, const KeyState state,
 void Wiz::InputsManager::UnRegisterEventToKey(const Key key, const KeyState state) {
 	
 	KeyEventStructure& targetKeyEventStruct = GetKeyEventStructure(key);
+
+	if (key == Key::MOUSE_MOVING) { //Mouse (Moving) is a special key
+		targetKeyEventStruct.m_PtrToHeldEvent = nullptr;
+		targetKeyEventStruct.m_HeldEventPointed = false;
+
+		return;
+	}
 	
 	switch (state) {
 	case KeyState::PRESSED:
