@@ -11,17 +11,18 @@ class DirectXWindowManager {
 	//##------------------------------- ATTRIBUTES -------------------------------##
 	//##############################################################################
 
-
-private:
+	//New class : DXRenderer
+	//- DXRenderer::Initialize()
+	//- DXRenderer::Uninitialize()
+	//- DXRenderer::Draw()
+	//- DXRenderer::Update()
+	//- DXRenderer::OnResize()
 
 	/* FLAGS */
 	bool m_Initialized;
 	bool m_lockMouseInWindow = false;
+	bool test;
 
-	/* Pointers to real variables into another classes */
-	GameTimer* m_TimerPtr;
-	bool* m_AppIsPausedPtr;
-	
 	HINSTANCE m_hAppInst = nullptr; // application instance handle
 
 	IDXGIFactory4* m_Factory;
@@ -51,30 +52,17 @@ private:
 	DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
-	struct Vertex
-	{
-		DirectX::XMFLOAT3 Pos;
-		DirectX::XMFLOAT4 Color;
+	struct Vertex {
+		XMFLOAT3 Pos;
+		XMFLOAT4 Color;
 	};
 
-	/*struct PassConstants {
-		DirectX::XMFLOAT4X4 m_PassConstantStruct = MathHelper::Identity4x4();
-	};*/
-
-	struct ObjectConstants
-	{
-		DirectX::XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
+	struct ObjectConstants {
+		XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
 	};
 
-	//std::unique_ptr<UploadBuffer<ObjectConstants>> m_ObjectCB = nullptr;
-
-	//std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
-	
 	// sphere
-	std::unordered_map<std::string,MeshGeometry*> m_Geometries;
-	/*std::vector<Vertex>& vertices = {};
-	std::vector<uint32_t>& indices = {};*/
-
+	std::unordered_map<std::string, MeshGeometry*> m_Geometries;
 
 	ID3DBlob* m_vsByteCode = nullptr;
 	ID3DBlob* m_psByteCode = nullptr;
@@ -90,9 +78,9 @@ private:
 	ID3D12RootSignature* m_RootSignature;
 	//ID3D12DescriptorHeap* m_CbvHeap;
 	ID3D12DescriptorHeap* m_CbvHeap2 = nullptr;
-	
-	DirectX::XMFLOAT4X4 m_View = MathHelper::Identity4x4();
-	DirectX::XMFLOAT4X4 m_Proj = MathHelper::Identity4x4();
+
+	XMFLOAT4X4 m_View = MathHelper::Identity4x4();
+	XMFLOAT4X4 m_Proj = MathHelper::Identity4x4();
 
 	MeshGeometry* m_pBoxGeo = nullptr;
 	MeshGeometry* m_pPyramidTriangleGeo = nullptr;
@@ -106,9 +94,8 @@ private:
 
 	POINT m_LastMousePos;
 
-	struct RenderItem
-	{
-		DirectX::XMFLOAT4X4* pEntityWorldMatrix;
+	struct RenderItem {
+		XMFLOAT4X4* pEntityWorldMatrix;
 		int NumFramesDirty = 1/*gNumFrameResources*/;
 		UINT ObjCBIndex = -1;
 		UINT IndexCount = 0;
@@ -124,13 +111,10 @@ private:
 	// Liste des objets opaques à afficher
 	std::vector<RenderItem*> m_OpaqueRitems;
 
-
 public:
 
 	inline static WindowInformation* m_WindowInformationPtr = nullptr;
 	UINT mCurrFrameResourceIndex = 0;
-
-private:
 
 	//#############################################################################
 	//##--------------------------------- CLASS ---------------------------------##
@@ -161,7 +145,10 @@ public:
 	/* SETTERS */
 
 	/** Lock and hide/show the mouse pointer */
-	SETTER void SetLockMouseInWindow(const bool newState) { m_lockMouseInWindow = newState; ShowCursor(!newState); }
+	SETTER void SetLockMouseInWindow(const bool newState) {
+		m_lockMouseInWindow = newState;
+		ShowCursor(!newState);
+	}
 
 
 	/* OTHERS FUNCTIONS */
@@ -169,9 +156,6 @@ public:
 	void Update();
 	void Draw();
 	void CalculateFrameStats();
-
-	static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-	LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	bool InitializeWindow(UINT16 windowWidth, UINT16 windowHeight, LPCWSTR windowTitle);
 	int InitializeDirectX3D();

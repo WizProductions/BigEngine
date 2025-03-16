@@ -51,6 +51,7 @@
 
 //Managers
 #include <Managers/ApplicationManager.h>
+#include "Managers/DirectXWindowEventsManager.h"
 #include <Managers/DirectXWindowManager.h>
 #include <Managers/EventsManager.h>
 #include <Managers/GameManager.h>

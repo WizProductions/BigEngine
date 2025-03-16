@@ -14,11 +14,9 @@ bool DirectXWindowManager::Init(UINT16 windowWidth, UINT16 windowHeight, LPCWSTR
 	if (m_Initialized)
 		return false;
 
-	ApplicationManager& app = *ApplicationManager::Get();
-	INIT_PTR(m_TimerPtr, &app.GetTimer());
-	INIT_PTR(m_AppIsPausedPtr, &app.AppIsPaused());
 	INIT_NEW_PTR(m_WindowInformationPtr, WindowInformation());
 
+	DirectXWindowEventsManager::Get().Init(&m_Device); // Initialize DirectXWindowEventsManager
 	InitializeWindow(windowWidth, windowHeight, windowTitle);
 	InitializeDirectX3D();
 
@@ -45,20 +43,12 @@ DirectXWindowManager& DirectXWindowManager::Get() {
 void DirectXWindowManager::Update() {
 
 	if (m_lockMouseInWindow) {
-		
+
 		SetCursorPos(
-			m_WindowInformationPtr->firstPixelPosition.x + m_WindowInformationPtr->halfWidth
-			, m_WindowInformationPtr->firstPixelPosition.y + m_WindowInformationPtr->halfHeight
-			);
+			m_WindowInformationPtr->firstPixelPosition.x + m_WindowInformationPtr->halfWidth,
+			m_WindowInformationPtr->firstPixelPosition.y + m_WindowInformationPtr->halfHeight
+		);
 	}
-	
-	// // Convert Spherical to Cartesian coordinates.
-	// float x = m_Radius * sinf(m_Phi) * cosf(m_Theta);
-	// float z = m_Radius * sinf(m_Phi) * sinf(m_Theta);
-	// float y = m_Radius * cosf(m_Phi);
-
-
-	// Build the view matrix.
 
 	XMMATRIX view = XMMatrixIdentity(); //Default matrix
 
@@ -75,13 +65,13 @@ void DirectXWindowManager::Update() {
 
 		// Valeurs pour une caméra en position (1, 0, 0)
 		float m_Phi = 0; // π/2 (90 degrés)
-		float m_Theta = 0.0f;    // 0 degré
+		float m_Theta = 0.0f; // 0 degré
 
 		// Convert Spherical to Cartesian coordinates.
 		float x = 1 * sinf(m_Phi) * cosf(m_Theta);
 		float z = 1 * sinf(m_Phi) * sinf(m_Theta);
 		float y = 1 * cosf(m_Phi);
-		
+
 		XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
 		XMVECTOR target = XMVectorZero();
 		XMVECTOR upVector = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -89,13 +79,10 @@ void DirectXWindowManager::Update() {
 		view = XMMatrixLookAtLH(pos, target, upVector); //Camera matrix
 		XMStoreFloat4x4(&m_View, view);
 	}
-	
+
 	XMMATRIX proj = XMLoadFloat4x4(&m_Proj); //Perspective / orthographic matrix
 
 	// Update the constant buffer with the latest worldViewProj matrix.
-	//ObjectConstants objConstants;
-	//XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
-	//ObjectCB->CopyData(0, objConstants);
 	for (auto& ri : m_OpaqueRitems) {
 		ObjectConstants objConstants;
 		XMMATRIX world = XMLoadFloat4x4(ri->pEntityWorldMatrix);
@@ -113,7 +100,7 @@ void DirectXWindowManager::Update() {
 
 
 void DirectXWindowManager::Draw() {
-	
+
 	std::cerr << "[DEBUG] Début de Draw()" << std::endl;
 	std::cerr << "[DEBUG] Nombre d'objets opaques à dessiner : " << m_OpaqueRitems.size() << std::endl;
 	// Initialisation des commandes
@@ -129,12 +116,6 @@ void DirectXWindowManager::Draw() {
 
 	auto barrierBegin = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_CommandList->ResourceBarrier(1, &barrierBegin);
-	/*int passCbvIndex = mPassCbvOffset + mCurrFrameResourceIndex;
-	auto passCbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(m_CbvHeap2->GetGPUDescriptorHandleForHeapStart());
-	passCbvHandle.Offset(passCbvIndex, mCbvSrvUavDescriptorSize);
-	m_CommandList->SetGraphicsRootDescriptorTable(1, passCbvHandle);
-
-	m_CommandList.Get(), m_OpaqueRitems;*/
 
 	// Effacer le render target et le depth/stencil.
 	auto rtvHandle = CurrentBackBufferView();
@@ -143,18 +124,12 @@ void DirectXWindowManager::Draw() {
 	m_CommandList->ClearRenderTargetView(rtvHandle, DirectX::Colors::LightSteelBlue, 0, nullptr);
 	m_CommandList->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvHeap2 };
+	ID3D12DescriptorHeap* descriptorHeaps[] = {m_CbvHeap2};
 	m_CommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 
 	// Dessiner chaque objet
-	for (auto& ri : m_OpaqueRitems)
-	{
-		//D3D12_GPU_VIRTUAL_ADDRESS cbAddress = m_ObjectCB->Resource()->GetGPUVirtualAddress();
-		//cbAddress += ri->ObjCBIndex * d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-		//set pipeline state
-		//pso = psoDesc
-		//ID3D12PipelineState *pPipelineState
+	for (auto& ri : m_OpaqueRitems) {
 
 		m_CommandList->SetGraphicsRootSignature(m_RootSignature);
 		m_CommandList->SetPipelineState(m_PSO);
@@ -170,7 +145,7 @@ void DirectXWindowManager::Draw() {
 		std::cerr << "[DEBUG] ObjCBIndex = " << ri->ObjCBIndex
 			<< " - GPU Virtual Address: " << ri->ObjectCB->Resource()->GetGPUVirtualAddress() << std::endl;
 		m_CommandList->SetGraphicsRootConstantBufferView(0, ri->ObjectCB->Resource()->GetGPUVirtualAddress());
-		
+
 		//Get the addresses of vertex and index buffer
 		auto vbv = ri->Geo->VertexBufferView();
 		auto ibv = ri->Geo->IndexBufferView();
@@ -195,152 +170,13 @@ void DirectXWindowManager::Draw() {
 	m_CommandList->ResourceBarrier(1, &barrier);
 	ThrowIfFailed(m_CommandList->Close());
 
-	ID3D12CommandList* cmdsLists[] = { m_CommandList };
+	ID3D12CommandList* cmdsLists[] = {m_CommandList};
 	m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 	ThrowIfFailed(m_SwapChain->Present(0, 0));
 
 	m_CurrBackBuffer = (m_CurrBackBuffer + 1) % SwapChainBufferCount;
 
 	FlushCommandQueue();
-}
-
-LRESULT DirectXWindowManager::MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-
-	// Forward hwnd on because we can get messages (e.g., WM_CREATE)
-	// before CreateWindow returns, and thus before mhMainWnd is valid.
-
-	return DirectXWindowManager::Get().MsgProc(hwnd, msg, wParam, lParam);
-}
-
-LRESULT DirectXWindowManager::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	switch (msg)
-	{
-		// WM_ACTIVATE is sent when the window is activated or deactivated.  
-		// We pause the game when the window is deactivated and unpause it 0
-		// when it becomes active.
-
-	case WM_MOVE:
-		m_WindowInformationPtr->UpdateFirstPixelPosition();
-		return 0;
-		
-	case WM_ACTIVATE:
-		if (LOWORD(wParam) == WA_INACTIVE)
-		{
-			*m_AppIsPausedPtr = true;
-			m_TimerPtr->Stop();
-		}
-		else
-		{
-			*m_AppIsPausedPtr = false;
-			m_TimerPtr->Start();
-		}
-		return 0;
-
-
-
-		// WM_SIZE is sent when the user resizes the window.  
-	case WM_SIZE:
-		// Save the new client area dimensions.
-		m_WindowInformationPtr->UpdateWindowSize(LOWORD(lParam), HIWORD(lParam));
-		
-		if (m_Device)
-		{
-			if (wParam == SIZE_MINIMIZED)
-			{
-				*m_AppIsPausedPtr = true;
-				m_WindowInformationPtr->minimized = true;
-				m_WindowInformationPtr->maximized = false;
-			}
-			else if (wParam == SIZE_MAXIMIZED)
-			{
-				*m_AppIsPausedPtr = false;
-				m_WindowInformationPtr->minimized = false;
-				m_WindowInformationPtr->maximized = true;
-				OnResize();
-			}
-			else if (wParam == SIZE_RESTORED)
-			{
-
-				// Restoring from minimized state?
-				if (m_WindowInformationPtr->minimized)
-				{
-					*m_AppIsPausedPtr = false;
-					m_WindowInformationPtr->minimized = false;
-					OnResize();
-				}
-
-				// Restoring from maximized state?
-				else if (m_WindowInformationPtr->maximized)
-				{
-					*m_AppIsPausedPtr = false;
-					m_WindowInformationPtr->maximized = false;
-					OnResize();
-				}
-				else if (m_WindowInformationPtr->resizing)
-				{
-					// If user is dragging the resize bars, we do not resize 
-					// the buffers here because as the user continuously 
-					// drags the resize bars, a stream of WM_SIZE messages are
-					// sent to the window, and it would be pointless (and slow)
-					// to resize for each WM_SIZE message received from dragging
-					// the resize bars.  So instead, we reset after the user is 
-					// done resizing the window and releases the resize bars, which 
-					// sends a WM_EXITSIZEMOVE message.
-				}
-				else // API call such as SetWindowPos or mSwapChain->SetFullscreenState.
-				{
-					OnResize();
-				}
-			}
-		}
-		return 0;
-
-		// WM_EXITSIZEMOVE is sent when the user grabs the resize bars.
-	case WM_ENTERSIZEMOVE:
-		/*mAppPaused = true;
-		mResizing  = true;
-		mTimer.Stop();*/
-		return 0;
-
-		// WM_EXITSIZEMOVE is sent when the user releases the resize bars.
-		// Here we reset everything based on the new window dimensions.
-	case WM_EXITSIZEMOVE:
-		/*mAppPaused = false;
-		mResizing  = false;
-		mTimer.Start();
-		OnResize();*/
-		return 0;
-
-		// WM_DESTROY is sent when the window is being destroyed.
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-
-		// The WM_MENUCHAR message is sent when a menu is active and the user presses 
-		// a key that does not correspond to any mnemonic or accelerator key. 
-	case WM_MENUCHAR:
-		// Don't beep when we alt-enter.
-		return MAKELRESULT(0, MNC_CLOSE);
-
-		// Catch this message so to prevent the window from becoming too small.
-	case WM_GETMINMAXINFO:
-		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.x = 200;
-		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize.y = 200;
-		return 0;
-	case WM_LBUTTONDOWN:
-	case WM_MBUTTONDOWN:
-	case WM_RBUTTONDOWN:
-		OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-		return 0;
-	case WM_LBUTTONUP:
-	case WM_MBUTTONUP:
-	case WM_RBUTTONUP:
-		OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-		return 0;
-	}
-
-	return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
 bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT16 windowHeight, const LPCWSTR windowTitle) {
@@ -351,7 +187,7 @@ bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT
 
 	WNDCLASS wc = {};
 	wc.style = CS_HREDRAW | CS_VREDRAW;
-	wc.lpfnWndProc = MainWndProc;
+	wc.lpfnWndProc = DirectXWindowEventsManager::MainWndProc;
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
 	wc.hInstance = m_hAppInst;
@@ -361,21 +197,29 @@ bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT
 	wc.lpszMenuName = nullptr;
 	wc.lpszClassName = L"MainWnd";
 
-	if (!RegisterClass(&wc))
-	{
+	if (!RegisterClass(&wc)) {
 		MessageBox(0, L"RegisterClass Failed.", 0, 0);
 		return false;
 	}
 
 	// Compute window rectangle dimensions based on requested client area dimensions.
-	RECT rect = { 0, 0, m_WindowInformationPtr->width, m_WindowInformationPtr->height };
+	RECT rect = {0, 0, m_WindowInformationPtr->width, m_WindowInformationPtr->height};
 	AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, false);
 	const int width = rect.right - rect.left;
 	const int height = rect.bottom - rect.top;
 
-	m_WindowInformationPtr->mainWindowHandle = CreateWindow(L"MainWnd", m_WindowInformationPtr->title, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, m_hAppInst, 0);
-	if (!m_WindowInformationPtr->mainWindowHandle)
-	{
+	m_WindowInformationPtr->mainWindowHandle = CreateWindow(L"MainWnd",
+	                                                        m_WindowInformationPtr->title,
+	                                                        WS_OVERLAPPEDWINDOW,
+	                                                        CW_USEDEFAULT,
+	                                                        CW_USEDEFAULT,
+	                                                        width,
+	                                                        height,
+	                                                        nullptr,
+	                                                        nullptr,
+	                                                        m_hAppInst,
+	                                                        nullptr);
+	if (!m_WindowInformationPtr->mainWindowHandle) {
 		MessageBox(nullptr, L"CreateWindow Failed.", nullptr, 0);
 		return false;
 	}
@@ -387,7 +231,7 @@ bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT
 
 int DirectXWindowManager::InitializeDirectX3D() {
 
-#if defined(DEBUG) || defined(_DEBUG) 
+#if defined(DEBUG) || defined(_DEBUG)
 	// Enable the D3D12 debug layer.
 	{
 		ID3D12Debug* debugController;
@@ -397,50 +241,51 @@ int DirectXWindowManager::InitializeDirectX3D() {
 #endif
 
 //Create FACTORY
-ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&m_Factory)));
+	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&m_Factory)));
 
 //Create DEVICE
-CreateDevice(D3D_FEATURE_LEVEL_12_2, m_Device);
+	CreateDevice(D3D_FEATURE_LEVEL_12_2, m_Device);
 
 //Create FENCE
-CreateFence();
-CreateCommandObjects();
-CreateSwapChain();
-CreateRtvAndDescriptorsHeaps();
+	CreateFence();
+	CreateCommandObjects();
+	CreateSwapChain();
+	CreateRtvAndDescriptorsHeaps();
 //CreateRenderTargetView();
-OnResize();
+	OnResize();
 
 // Reset the command list to prep for initialization commands.
-ThrowIfFailed(m_CommandList->Reset(m_DirectCmdListAlloc, nullptr));
+	ThrowIfFailed(m_CommandList->Reset(m_DirectCmdListAlloc, nullptr));
 
-BuildDescriptorHeaps();
-BuildRootSignature();
-BuildShadersAndInputLayout();
-BuildBoxGeometry();
+	BuildDescriptorHeaps();
+	BuildRootSignature();
+	BuildShadersAndInputLayout();
+	BuildBoxGeometry();
 //SphereGeo(radius, numSubdivisions);
 //GeometryGenerator::CreateGeoSphere(radius, numSubdivisions);
 //BuildRenderItems();
-InitializePyramidTriangleGeo();
-InitializePyramidSquaredGeo();
+	InitializePyramidTriangleGeo();
+	InitializePyramidSquaredGeo();
 
-BuildConstantBuffers();
-BuildPSO();
+	BuildConstantBuffers();
+	BuildPSO();
 
 // Execute the initialization commands.
-ThrowIfFailed(m_CommandList->Close());
-ID3D12CommandList* cmdsLists[] = { m_CommandList };
-m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+	ThrowIfFailed(m_CommandList->Close());
+	ID3D12CommandList* cmdsLists[] = {m_CommandList};
+	m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
 // Wait until initialization is complete.
-FlushCommandQueue();
+	FlushCommandQueue();
 
-return 0;
+	return 0;
 }
 
 
 void DirectXWindowManager::CreateDevice(D3D_FEATURE_LEVEL minFeatureLevel, ID3D12Device*& device) {
 	const HRESULT hardwareResult = D3D12CreateDevice(
-		nullptr, // default adapter
+		nullptr,
+		// default adapter
 		minFeatureLevel,
 		IID_PPV_ARGS(&device)
 	);
@@ -452,9 +297,9 @@ void DirectXWindowManager::CreateDevice(D3D_FEATURE_LEVEL minFeatureLevel, ID3D1
 
 		ThrowIfFailed(m_Factory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter)));
 		ThrowIfFailed(D3D12CreateDevice(
-			pWarpAdapter,
-			D3D_FEATURE_LEVEL_11_1,
-			IID_PPV_ARGS(&device))
+				pWarpAdapter,
+				D3D_FEATURE_LEVEL_11_1,
+				IID_PPV_ARGS(&device))
 		);
 	}
 }
@@ -538,14 +383,15 @@ void DirectXWindowManager::CreateRenderTargetView() {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(
 		m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	for (UINT i = 0; i < SwapChainBufferCount; i++)
-	{
+	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		// Get the ith buffer in the swap chain.
 		ThrowIfFailed(m_SwapChain->GetBuffer(
 			i, IID_PPV_ARGS(&m_SwapChainBuffer[i])));
 		// Create an RTV to it.
 		m_Device->CreateRenderTargetView(
-			m_SwapChainBuffer[i], nullptr, rtvHeapHandle);
+			m_SwapChainBuffer[i],
+			nullptr,
+			rtvHeapHandle);
 		// Next entry in heap.
 		rtvHeapHandle.Offset(1, m_RtvDescriptorSize);
 	}
@@ -554,8 +400,10 @@ void DirectXWindowManager::CreateRenderTargetView() {
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXWindowManager::CurrentBackBufferView() {
 	// CD3DX12 constructor to offset to the RTV of the current back buffer.
 	return CD3DX12_CPU_DESCRIPTOR_HANDLE(
-		m_RtvHeap->GetCPUDescriptorHandleForHeapStart(),	// handle start
-		m_CurrBackBuffer, // index to offset
+		m_RtvHeap->GetCPUDescriptorHandleForHeapStart(),
+		// handle start
+		m_CurrBackBuffer,
+		// index to offset
 		m_RtvDescriptorSize
 	); // byte size of descriptor
 }
@@ -581,12 +429,12 @@ void DirectXWindowManager::CreateCommittedResource() {
 
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	ThrowIfFailed(m_Device->CreateCommittedResource(
-		&heapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&depthStencilDesc,
-		D3D12_RESOURCE_STATE_COMMON,
-		&optClear,
-		IID_PPV_ARGS(&m_DepthStencilBuffer))
+			&heapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&depthStencilDesc,
+			D3D12_RESOURCE_STATE_COMMON,
+			&optClear,
+			IID_PPV_ARGS(&m_DepthStencilBuffer))
 	);
 
 	// Create descriptor to mip level 0 of entire resource using the
@@ -597,8 +445,7 @@ void DirectXWindowManager::CreateCommittedResource() {
 	m_CommandList->ResourceBarrier(1, &transition);
 }
 
-void DirectXWindowManager::BuildDescriptorHeaps()
-{
+void DirectXWindowManager::BuildDescriptorHeaps() {
 	UINT objCount = (UINT)m_OpaqueRitems.size();
 
 	UINT numDescriptors = (objCount + 1) * gNumFrameResources;
@@ -667,17 +514,21 @@ void DirectXWindowManager::BuildRootSignature() {
 	slotRootParameter[0].InitAsConstantBufferView(0);
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1, slotRootParameter, 0, nullptr,
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1,
+	                                        slotRootParameter,
+	                                        0,
+	                                        nullptr,
+	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ID3DBlob* serializedRootSig = nullptr;
 	ID3DBlob* errorBlob = nullptr;
-	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-		&serializedRootSig, &errorBlob);
+	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc,
+	                                         D3D_ROOT_SIGNATURE_VERSION_1,
+	                                         &serializedRootSig,
+	                                         &errorBlob);
 
-	if (errorBlob != nullptr)
-	{
+	if (errorBlob != nullptr) {
 		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	}
 	ThrowIfFailed(hr);
@@ -697,23 +548,22 @@ void DirectXWindowManager::BuildShadersAndInputLayout() {
 
 	m_InputLayout =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
 	};
 }
 
-void DirectXWindowManager::BuildBoxGeometry()
-{
+void DirectXWindowManager::BuildBoxGeometry() {
 	std::array<Vertex, 8> vertices =
 	{
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
-		Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
-		Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
-		Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
-		Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green)}),
+		Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta)})
 	};
 
 	std::array<std::uint16_t, 36> indices =
@@ -756,10 +606,16 @@ void DirectXWindowManager::BuildBoxGeometry()
 	CopyMemory(m_pBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	m_pBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(m_Device,
-		m_CommandList, vertices.data(), vbByteSize, m_pBoxGeo->VertexBufferUploader);
+	                                                          m_CommandList,
+	                                                          vertices.data(),
+	                                                          vbByteSize,
+	                                                          m_pBoxGeo->VertexBufferUploader);
 
 	m_pBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(m_Device,
-		m_CommandList, indices.data(), ibByteSize, m_pBoxGeo->IndexBufferUploader);
+	                                                         m_CommandList,
+	                                                         indices.data(),
+	                                                         ibByteSize,
+	                                                         m_pBoxGeo->IndexBufferUploader);
 
 	m_pBoxGeo->VertexByteStride = sizeof(Vertex);
 	m_pBoxGeo->VertexBufferByteSize = vbByteSize;
@@ -780,11 +636,11 @@ void DirectXWindowManager::InitializePyramidTriangleGeo() {
 	std::array<Vertex, 4> vertices =
 	{
 		// Les 3 points de la base
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),  // 0
-		Vertex({ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Red) }),     // 1
-		Vertex({ XMFLOAT3(0.0f, -1.0f, 1.0f), XMFLOAT4(Colors::Green) }),    // 2
+		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White)}), // 0
+		Vertex({XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Red)}), // 1
+		Vertex({XMFLOAT3(0.0f, -1.0f, 1.0f), XMFLOAT4(Colors::Green)}), // 2
 		// Le sommet de la pyramide
-		Vertex({ XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT4(Colors::Blue) })       // 3
+		Vertex({XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT4(Colors::Blue)}) // 3
 	};
 
 	std::array<std::uint16_t, 12> indices =
@@ -801,7 +657,7 @@ void DirectXWindowManager::InitializePyramidTriangleGeo() {
 		// face 3
 		3, 0, 2
 	};
-	
+
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
@@ -816,10 +672,16 @@ void DirectXWindowManager::InitializePyramidTriangleGeo() {
 
 	//Envoie vers cg
 	m_pPyramidTriangleGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(m_Device,
-		m_CommandList, vertices.data(), vbByteSize, m_pPyramidTriangleGeo->VertexBufferUploader);
+	                                                                      m_CommandList,
+	                                                                      vertices.data(),
+	                                                                      vbByteSize,
+	                                                                      m_pPyramidTriangleGeo->VertexBufferUploader);
 
 	m_pPyramidTriangleGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(m_Device,
-		m_CommandList, indices.data(), ibByteSize, m_pPyramidTriangleGeo->IndexBufferUploader);
+	                                                                     m_CommandList,
+	                                                                     indices.data(),
+	                                                                     ibByteSize,
+	                                                                     m_pPyramidTriangleGeo->IndexBufferUploader);
 
 	m_pPyramidTriangleGeo->VertexByteStride = sizeof(Vertex);
 	m_pPyramidTriangleGeo->VertexBufferByteSize = vbByteSize;
@@ -836,19 +698,18 @@ void DirectXWindowManager::InitializePyramidTriangleGeo() {
 	m_Geometries["prisme_triangle"] = m_pPyramidTriangleGeo;
 }
 
-void DirectXWindowManager::InitializePyramidSquaredGeo()
-{
+void DirectXWindowManager::InitializePyramidSquaredGeo() {
 	std::array<Vertex, 5> vertices =
 	{
 		// v3 back side
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),  // 0
-		Vertex({ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(Colors::Red) }),     // 1
+		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White)}), // 0
+		Vertex({XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(Colors::Red)}), // 1
 
-		Vertex({ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT4(Colors::Magenta) }),    // 2
-		Vertex({ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),    // 3
+		Vertex({XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT4(Colors::Magenta)}), // 2
+		Vertex({XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green)}), // 3
 
 		//sommet
-		Vertex({ XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT4(Colors::Blue) })       // 4
+		Vertex({XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT4(Colors::Blue)}) // 4
 	};
 
 	std::array<std::uint16_t, 18> indices =
@@ -887,10 +748,16 @@ void DirectXWindowManager::InitializePyramidSquaredGeo()
 	CopyMemory(m_pPyramidSquaredGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	m_pPyramidSquaredGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(m_Device,
-		m_CommandList, vertices.data(), vbByteSize, m_pPyramidSquaredGeo->VertexBufferUploader);
+	                                                                     m_CommandList,
+	                                                                     vertices.data(),
+	                                                                     vbByteSize,
+	                                                                     m_pPyramidSquaredGeo->VertexBufferUploader);
 
 	m_pPyramidSquaredGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(m_Device,
-		m_CommandList, indices.data(), ibByteSize, m_pPyramidSquaredGeo->IndexBufferUploader);
+	                                                                    m_CommandList,
+	                                                                    indices.data(),
+	                                                                    ibByteSize,
+	                                                                    m_pPyramidSquaredGeo->IndexBufferUploader);
 
 	m_pPyramidSquaredGeo->VertexByteStride = sizeof(Vertex);
 	m_pPyramidSquaredGeo->VertexBufferByteSize = vbByteSize;
@@ -906,11 +773,10 @@ void DirectXWindowManager::InitializePyramidSquaredGeo()
 	m_Geometries["prisme_triangle_carre"] = m_pPyramidSquaredGeo;
 }
 
-void DirectXWindowManager::BuildPSO()
-{
+void DirectXWindowManager::BuildPSO() {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
 	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	psoDesc.InputLayout = { m_InputLayout.data(), (UINT)m_InputLayout.size() };
+	psoDesc.InputLayout = {m_InputLayout.data(), (UINT)m_InputLayout.size()};
 	psoDesc.pRootSignature = m_RootSignature;
 	psoDesc.VS =
 	{
@@ -946,8 +812,7 @@ void DirectXWindowManager::FlushCommandQueue() {
 	ThrowIfFailed(m_CommandQueue->Signal(m_Fence, m_CurrentFence));
 
 	// Wait until the GPU has completed commands up to this fence point.
-	if (m_Fence->GetCompletedValue() < m_CurrentFence)
-	{
+	if (m_Fence->GetCompletedValue() < m_CurrentFence) {
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 
 		// Fire event when GPU hits current fence.  
@@ -968,21 +833,20 @@ bool DirectXWindowManager::CheckMSAASupport() {
 	msQualityLevels.NumQualityLevels = 0;
 
 	ThrowIfFailed(m_Device->CheckFeatureSupport(
-		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
-		&msQualityLevels,
-		sizeof(msQualityLevels))
+			D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+			&msQualityLevels,
+			sizeof(msQualityLevels))
 	);
 
 	return true;
 }
 
-void DirectXWindowManager::CalculateFrameStats()
-{
+void DirectXWindowManager::CalculateFrameStats() {
 	static int frameCnt = 0;
 	static float timeElapsed = 0.0f;
 	frameCnt++;
 	// Compute averages over one second period.
-	if ((m_TimerPtr->TotalTime() - timeElapsed) >= 1.0f) {
+	if ((ApplicationManager::Get()->GetTimer().TotalTime() - timeElapsed) >= 1.0f) {
 		float fps = (float)frameCnt; // fps = frameCnt / 1
 		float mspf = 1000.0f / fps;
 		std::wstring fpsStr = std::to_wstring(fps);
@@ -1010,15 +874,12 @@ void DirectXWindowManager::OnResize() {
 	ThrowIfFailed(m_CommandList->Reset(m_DirectCmdListAlloc, nullptr));
 
 	// Release the previous resources we will be recreating.
-	for (int i = 0; i < SwapChainBufferCount; ++i)
-	{
-		if (m_SwapChainBuffer[i])
-		{
+	for (int i = 0; i < SwapChainBufferCount; ++i) {
+		if (m_SwapChainBuffer[i]) {
 			m_SwapChainBuffer[i]->Release();
 			m_SwapChainBuffer[i] = nullptr;
 		}
-		if (m_DepthStencilBuffer)
-		{
+		if (m_DepthStencilBuffer) {
 			m_DepthStencilBuffer->Release();
 			m_DepthStencilBuffer = nullptr;
 		}
@@ -1034,8 +895,7 @@ void DirectXWindowManager::OnResize() {
 	m_CurrBackBuffer = 0;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-	for (UINT i = 0; i < SwapChainBufferCount; i++)
-	{
+	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		ThrowIfFailed(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&m_SwapChainBuffer[i])));
 		m_Device->CreateRenderTargetView(m_SwapChainBuffer[i], nullptr, rtvHeapHandle);
 		rtvHeapHandle.Offset(1, m_RtvDescriptorSize);
@@ -1083,7 +943,7 @@ void DirectXWindowManager::OnResize() {
 
 	// Execute the resize commands.
 	ThrowIfFailed(m_CommandList->Close());
-	ID3D12CommandList* cmdsLists[] = { m_CommandList };
+	ID3D12CommandList* cmdsLists[] = {m_CommandList};
 	m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
 	// Wait until resize is complete.
@@ -1097,7 +957,7 @@ void DirectXWindowManager::OnResize() {
 	mScreenViewport.MinDepth = 0.0f;
 	mScreenViewport.MaxDepth = 1.0f;
 
-	mScissorRect = { 0, 0, m_WindowInformationPtr->width, m_WindowInformationPtr->height };
+	mScissorRect = {0, 0, m_WindowInformationPtr->width, m_WindowInformationPtr->height};
 
 	// Ajouter après la définition du scissor rect :
 	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * XM_PI, this->GetAspectRatio(), 1.0f, 1000.0f);
@@ -1108,19 +968,16 @@ void DirectXWindowManager::OnResize() {
 
 
 void DirectXWindowManager::OnMouseDown(WPARAM btnState, int x, int y) {
-	SetCapture(m_WindowInformationPtr->mainWindowHandle); //A mettre dans une classe annexes
+	//A mettre dans une classe annexes
 }
 
-void DirectXWindowManager::OnMouseUp(WPARAM btnState, int x, int y) {
-	ReleaseCapture();
-}
+void DirectXWindowManager::OnMouseUp(WPARAM btnState, int x, int y) {}
 
-void DirectXWindowManager::BuildRenderItems()
-{
+void DirectXWindowManager::BuildRenderItems() {
 	RenderItem* boxRitem = new RenderItem();
 	XMStoreFloat4x4(boxRitem->pEntityWorldMatrix, XMMatrixTranslation(-8.0f, 0.0f, 0.0f)); // Centré
 	XMStoreFloat4x4(boxRitem->pEntityWorldMatrix, XMMatrixIdentity());
-  
+
 	boxRitem->ObjCBIndex = 0;
 	boxRitem->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, 1, true);
 	if (!boxRitem->ObjectCB || !boxRitem->ObjectCB->Resource()) {
@@ -1145,7 +1002,7 @@ void DirectXWindowManager::BuildRenderItems()
 	m_OpaqueRitems.push_back(boxRitem);
 
 	//World x View x Proj
-    //Transpose -> shader
+	//Transpose -> shader
 
 	RenderItem* pyramideRitem = new RenderItem();
 	XMStoreFloat4x4(pyramideRitem->pEntityWorldMatrix, XMMatrixTranslation(0.0f, 0.0f, 0.0f)); // Décalé à droite
@@ -1205,13 +1062,13 @@ void DirectXWindowManager::DrawEntity(const std::string& geoName, Entity& entity
 	renderItem->StartIndexLocation = renderItem->Geo->DrawArgs[geoName].StartIndexLocation;
 	renderItem->BaseVertexLocation = renderItem->Geo->DrawArgs[geoName].BaseVertexLocation;
 	renderItem->ObjCBIndex = 0;
-    renderItem->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, 1, true);
-    if (!renderItem->ObjectCB || !renderItem->ObjectCB->Resource()) {
-        std::cerr << "[ERREUR] ObjectCB non initialisé dans BuildRenderItems() !" << std::endl;
-    }
-    else {
-        std::cerr << "[DEBUG] ObjectCB bien créé pour ObjCBIndex = " << renderItem->ObjCBIndex << std::endl;
-    }
-	
+	renderItem->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, 1, true);
+	if (!renderItem->ObjectCB || !renderItem->ObjectCB->Resource()) {
+		std::cerr << "[ERREUR] ObjectCB non initialisé dans BuildRenderItems() !" << std::endl;
+	}
+	else {
+		std::cerr << "[DEBUG] ObjectCB bien créé pour ObjCBIndex = " << renderItem->ObjCBIndex << std::endl;
+	}
+
 	m_OpaqueRitems.push_back(renderItem);
 }

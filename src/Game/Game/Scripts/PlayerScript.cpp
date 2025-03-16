@@ -63,9 +63,7 @@ void PlayerScript::Move(const Wiz::Key key) {
 }
 
 void PlayerScript::OnMouseMove(const Wiz::Key key) {
-
-	std::cout << "called" << std::endl;
-
+	
 	const auto cameraC = CameraSystem::Get().GetSelectedCamera();
 	
 	if (!cameraC)

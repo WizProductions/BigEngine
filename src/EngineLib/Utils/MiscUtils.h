@@ -24,6 +24,12 @@ return false; \
 } \
 } while (0)
 
+/** Initialize a pointer with a value but if you want to sure the pointer is valid use "INIT_PTR" */
+#define INIT_PTR_N(ptr, value) \
+do { \
+ptr = value; \
+} while (0)
+
 #define UNINIT_PTR(ptr) \
 do { \
 if (ptr != nullptr) { \
