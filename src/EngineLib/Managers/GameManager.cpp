@@ -22,9 +22,6 @@ bool GameManager::Init() {
 
 	CameraComponent* cameraC = new CameraComponent;
 	cameraC->m_Transform.SetPosition(0, 0, -10);
-	//this->SetSelectedCamera(cameraC);
-
-	std::cout << cameraC->m_Transform;
 
 	m_SystemsManager->Init();
 	m_InputsManager->Init();
@@ -77,7 +74,6 @@ void GameManager::StartLoop() {
 		
 		if( !*m_AppIsPausedPtr )
 		{
-			DirectXWindowManager::Get().CalculateFrameStats();
 			this->Update();
 			this->Draw();
 		}

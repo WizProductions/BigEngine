@@ -7,14 +7,13 @@ using namespace DirectX;
 DirectXWindowManager::DirectXWindowManager() { this->UnInit(); }
 DirectXWindowManager::~DirectXWindowManager() { DESTRUCTOR_UNINIT(m_Initialized); }
 
-const int gNumFrameResources = 1;
-
 bool DirectXWindowManager::Init(UINT16 windowWidth, UINT16 windowHeight, LPCWSTR windowTitle) {
 
 	if (m_Initialized)
 		return false;
 
 	INIT_NEW_PTR(m_WindowInformationPtr, WindowInformation());
+	INIT_NEW_PTR(m_DXRenderer, DXRenderer());
 
 	DirectXWindowEventsManager::Get().Init(&m_Device); // Initialize DirectXWindowEventsManager
 	InitializeWindow(windowWidth, windowHeight, windowTitle);
@@ -31,6 +30,7 @@ void DirectXWindowManager::UnInit() {
 		FlushCommandQueue();
 
 	UNINIT_PTR(m_WindowInformationPtr);
+	UNINIT_PTR(m_DXRenderer);
 
 	m_Initialized = false;
 }
@@ -62,10 +62,9 @@ void DirectXWindowManager::Update() {
 		XMStoreFloat4x4(&m_View, view);
 	}
 	else {
-
-		// Valeurs pour une caméra en position (1, 0, 0)
-		float m_Phi = 0; // π/2 (90 degrés)
-		float m_Theta = 0.0f; // 0 degré
+		
+		float m_Phi = 0;
+		float m_Theta = 0.0f;
 
 		// Convert Spherical to Cartesian coordinates.
 		float x = 1 * sinf(m_Phi) * cosf(m_Theta);
@@ -98,11 +97,8 @@ void DirectXWindowManager::Update() {
 }
 
 
-
 void DirectXWindowManager::Draw() {
 
-	std::cerr << "[DEBUG] Début de Draw()" << std::endl;
-	std::cerr << "[DEBUG] Nombre d'objets opaques à dessiner : " << m_OpaqueRitems.size() << std::endl;
 	// Initialisation des commandes
 	ThrowIfFailed(m_DirectCmdListAlloc->Reset());
 	ThrowIfFailed(m_CommandList->Reset(m_DirectCmdListAlloc, nullptr));
@@ -116,19 +112,16 @@ void DirectXWindowManager::Draw() {
 
 	auto barrierBegin = CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_CommandList->ResourceBarrier(1, &barrierBegin);
-
-	// Effacer le render target et le depth/stencil.
+	
 	auto rtvHandle = CurrentBackBufferView();
 	auto depthStencilView = GetDepthStencilView();
 
 	m_CommandList->ClearRenderTargetView(rtvHandle, DirectX::Colors::LightSteelBlue, 0, nullptr);
 	m_CommandList->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = {m_CbvHeap2};
+	ID3D12DescriptorHeap* descriptorHeaps[] = {m_CbvHeap};
 	m_CommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
-
-	// Dessiner chaque objet
+	
 	for (auto& ri : m_OpaqueRitems) {
 
 		m_CommandList->SetGraphicsRootSignature(m_RootSignature);
@@ -161,7 +154,6 @@ void DirectXWindowManager::Draw() {
 			<< " Y = " << ri->pEntityWorldMatrix->m[3][1]
 			<< " Z = " << ri->pEntityWorldMatrix->m[3][2] << std::endl;
 		m_CommandList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
-
 		//1 drawcall per object (not optimized)
 	}
 
@@ -209,17 +201,17 @@ bool DirectXWindowManager::InitializeWindow(const UINT16 windowWidth, const UINT
 	const int height = rect.bottom - rect.top;
 
 	m_WindowInformationPtr->mainWindowHandle = CreateWindow(L"MainWnd",
-	                                                        m_WindowInformationPtr->title,
-	                                                        WS_OVERLAPPEDWINDOW,
-	                                                        CW_USEDEFAULT,
-	                                                        CW_USEDEFAULT,
-	                                                        width,
-	                                                        height,
-	                                                        nullptr,
-	                                                        nullptr,
-	                                                        m_hAppInst,
-	                                                        nullptr);
-	if (!m_WindowInformationPtr->mainWindowHandle) {
+	    m_WindowInformationPtr->title,
+	    WS_OVERLAPPEDWINDOW,
+	    CW_USEDEFAULT,
+	    CW_USEDEFAULT,
+	    width,
+	    height,
+	    nullptr,
+	    nullptr,
+	    m_hAppInst,
+	    nullptr);
+if (!m_WindowInformationPtr->mainWindowHandle) {
 		MessageBox(nullptr, L"CreateWindow Failed.", nullptr, 0);
 		return false;
 	}
@@ -446,8 +438,7 @@ void DirectXWindowManager::CreateCommittedResource() {
 }
 
 void DirectXWindowManager::BuildDescriptorHeaps() {
-	UINT objCount = (UINT)m_OpaqueRitems.size();
-
+	UINT objCount = static_cast<UINT>(m_OpaqueRitems.size());
 	UINT numDescriptors = (objCount + 1) * gNumFrameResources;
 
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
@@ -455,19 +446,12 @@ void DirectXWindowManager::BuildDescriptorHeaps() {
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvHeapDesc.NodeMask = 0;
-	ThrowIfFailed(m_Device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_CbvHeap2)));
-
-	/*D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-	cbvHeapDesc.NumDescriptors = 1;
-	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	cbvHeapDesc.NodeMask = 0;
-	ThrowIfFailed(m_Device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_CbvHeap2)));*/
+	ThrowIfFailed(m_Device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_CbvHeap)));
 }
 
 void DirectXWindowManager::BuildConstantBuffers() {
 
-	if (!m_CbvHeap2) {
+	if (!m_CbvHeap) {
 		std::cerr << "[ERREUR] m_CbvHeap2 est nullptr avant la création du buffer !" << std::endl;
 	}
 	for (auto& item : m_OpaqueRitems) {
@@ -475,12 +459,9 @@ void DirectXWindowManager::BuildConstantBuffers() {
 			std::cerr << "[ERREUR] Problème avec ObjectCB dans BuildConstantBuffers() !" << std::endl;
 		}
 	}
-	// if (m_OpaqueRitems.empty()) {
-	// 	throw std::runtime_error("Erreur : m_OpaqueRitems est vide lors de l'allocation d'ObjectCB !");
-	// }
 
 	for (auto& item : m_OpaqueRitems) {
-		item->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, /*1*/(UINT)m_OpaqueRitems.size(), true);
+		item->ObjectCB = new UploadBuffer<ObjectConstants>(m_Device, /*1*/(UINT)m_OpaqueRitems.size(), true);
 
 		UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
@@ -492,7 +473,7 @@ void DirectXWindowManager::BuildConstantBuffers() {
 		cbvDesc.BufferLocation = cbAddress;
 		cbvDesc.SizeInBytes = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
-		m_Device->CreateConstantBufferView(&cbvDesc, m_CbvHeap2->GetCPUDescriptorHandleForHeapStart());
+		m_Device->CreateConstantBufferView(&cbvDesc, m_CbvHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 }
 
@@ -541,7 +522,6 @@ void DirectXWindowManager::BuildRootSignature() {
 }
 
 void DirectXWindowManager::BuildShadersAndInputLayout() {
-	HRESULT hr = S_OK;
 
 	m_vsByteCode = d3dUtil::CompileShader(L"..\\..\\..\\src\\EngineLib\\Shaders\\color.hlsl", nullptr, "VS", "vs_5_0").Get();
 	m_psByteCode = d3dUtil::CompileShader(L"..\\..\\..\\src\\EngineLib\\Shaders\\color.hlsl", nullptr, "PS", "ps_5_0").Get();
@@ -623,7 +603,7 @@ void DirectXWindowManager::BuildBoxGeometry() {
 	m_pBoxGeo->IndexBufferByteSize = ibByteSize;
 
 	SubmeshGeometry submesh;
-	submesh.IndexCount = (UINT)indices.size();
+	submesh.IndexCount = static_cast<UINT>(indices.size());
 	submesh.StartIndexLocation = 0;
 	submesh.BaseVertexLocation = 0;
 
@@ -841,27 +821,6 @@ bool DirectXWindowManager::CheckMSAASupport() {
 	return true;
 }
 
-void DirectXWindowManager::CalculateFrameStats() {
-	static int frameCnt = 0;
-	static float timeElapsed = 0.0f;
-	frameCnt++;
-	// Compute averages over one second period.
-	if ((ApplicationManager::Get()->GetTimer().TotalTime() - timeElapsed) >= 1.0f) {
-		float fps = (float)frameCnt; // fps = frameCnt / 1
-		float mspf = 1000.0f / fps;
-		std::wstring fpsStr = std::to_wstring(fps);
-		std::wstring mspfStr = std::to_wstring(mspf);
-		std::wstring windowText = std::wstring(m_WindowInformationPtr->title) +
-			L" fps: " + fpsStr +
-			L" mspf: " + mspfStr;
-
-		SetWindowText(m_WindowInformationPtr->mainWindowHandle, windowText.c_str());
-
-		// Reset for next average.
-		frameCnt = 0;
-		timeElapsed += 1.0f;
-	}
-}
 
 void DirectXWindowManager::OnResize() {
 	assert(m_Device);
@@ -957,112 +916,26 @@ void DirectXWindowManager::OnResize() {
 	mScreenViewport.MinDepth = 0.0f;
 	mScreenViewport.MaxDepth = 1.0f;
 
-	mScissorRect = {0, 0, m_WindowInformationPtr->width, m_WindowInformationPtr->height};
-
-	// Ajouter après la définition du scissor rect :
+	mScissorRect = {.left= 0, .top= 0, .right= m_WindowInformationPtr->width, .bottom= m_WindowInformationPtr->height};
+	
 	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * XM_PI, this->GetAspectRatio(), 1.0f, 1000.0f);
 	XMStoreFloat4x4(&m_Proj, P);
 
 	m_WindowInformationPtr->UpdateFirstPixelPosition();
 }
 
-
-void DirectXWindowManager::OnMouseDown(WPARAM btnState, int x, int y) {
-	//A mettre dans une classe annexes
-}
-
-void DirectXWindowManager::OnMouseUp(WPARAM btnState, int x, int y) {}
-
-void DirectXWindowManager::BuildRenderItems() {
-	RenderItem* boxRitem = new RenderItem();
-	XMStoreFloat4x4(boxRitem->pEntityWorldMatrix, XMMatrixTranslation(-8.0f, 0.0f, 0.0f)); // Centré
-	XMStoreFloat4x4(boxRitem->pEntityWorldMatrix, XMMatrixIdentity());
-
-	boxRitem->ObjCBIndex = 0;
-	boxRitem->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, 1, true);
-	if (!boxRitem->ObjectCB || !boxRitem->ObjectCB->Resource()) {
-		std::cerr << "[ERREUR] ObjectCB non initialisé dans BuildRenderItems() !" << std::endl;
-	}
-	else {
-		std::cerr << "[DEBUG] ObjectCB bien créé pour ObjCBIndex = " << boxRitem->ObjCBIndex << std::endl;
-	}
-
-	if (m_pBoxGeo) {
-		boxRitem->Geo = m_pBoxGeo;
-	}
-	else {
-		std::cerr << "Erreur : m_pBoxGeo est nullptr !" << std::endl;
-	}
-	//boxRitem->Geo = m_pBoxGeo.get();
-	boxRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
-	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
-	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
-
-	m_OpaqueRitems.push_back(boxRitem);
-
-	//World x View x Proj
-	//Transpose -> shader
-
-	RenderItem* pyramideRitem = new RenderItem();
-	XMStoreFloat4x4(pyramideRitem->pEntityWorldMatrix, XMMatrixTranslation(0.0f, 0.0f, 0.0f)); // Décalé à droite
-	XMStoreFloat4x4(pyramideRitem->pEntityWorldMatrix, XMMatrixIdentity());
-
-	pyramideRitem->ObjCBIndex = 1;
-	pyramideRitem->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, 1, true);
-
-
-	if (m_pPyramidSquaredGeo) {
-		pyramideRitem->Geo = m_pPyramidSquaredGeo;
-	}
-	else {
-		std::cerr << "Erreur : m_pPyramidSquaredGeo est nullptr !" << std::endl;
-	}
-	pyramideRitem->Geo = m_pPyramidSquaredGeo;
-	pyramideRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	pyramideRitem->IndexCount = pyramideRitem->Geo->DrawArgs["prisme_triangle_carre"].IndexCount;
-	pyramideRitem->StartIndexLocation = pyramideRitem->Geo->DrawArgs["prisme_triangle_carre"].StartIndexLocation;
-	pyramideRitem->BaseVertexLocation = pyramideRitem->Geo->DrawArgs["prisme_triangle_carre"].BaseVertexLocation;
-
-	m_OpaqueRitems.push_back(pyramideRitem);
-
-
-	RenderItem* pyramideTriRitem = new RenderItem();
-	XMStoreFloat4x4(pyramideTriRitem->pEntityWorldMatrix, XMMatrixTranslation(3.0f, 0.0f, 0.0f)); // Décalé à gauche
-	pyramideTriRitem->ObjCBIndex = 2;
-	pyramideTriRitem->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, 1, true);
-
-
-	if (m_pPyramidTriangleGeo) {
-		pyramideTriRitem->Geo = m_pPyramidTriangleGeo;
-	}
-	else {
-		std::cerr << "Erreur : m_pPyramidTriangleGeo est nullptr !" << std::endl;
-	}
-	//pyramideRitem->Geo = m_pPyramidSquaredGeo.get();
-	pyramideTriRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	pyramideTriRitem->IndexCount = pyramideTriRitem->Geo->DrawArgs["prisme_triangle"].IndexCount;
-	pyramideTriRitem->StartIndexLocation = pyramideTriRitem->Geo->DrawArgs["prisme_triangle"].StartIndexLocation;
-	pyramideTriRitem->BaseVertexLocation = pyramideTriRitem->Geo->DrawArgs["prisme_triangle"].BaseVertexLocation;
-
-	m_OpaqueRitems.push_back(pyramideTriRitem);
-
-	//GeoSphere
-}
-
-void DirectXWindowManager::DrawEntity(const std::string& geoName, Entity& entity) {
+void DirectXWindowManager::DrawEntity(const std::string& geoName, const Entity& entity) {
 	RenderItem* renderItem = new RenderItem();
 	Transform& entityTransform = entity.m_Transform;
-	//XMStoreFloat4x4(&renderItem->World, XMMatrixTranslation(XMLoadFloat3(&entityTransform.vPosition));
 	renderItem->pEntityWorldMatrix = &entityTransform.mWorld;
-	renderItem->ObjCBIndex = (UINT)m_OpaqueRitems.size();
+	renderItem->ObjCBIndex = static_cast<UINT>(m_OpaqueRitems.size());
 	renderItem->Geo = m_Geometries[geoName];
 	renderItem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	renderItem->IndexCount = renderItem->Geo->DrawArgs[geoName].IndexCount;
 	renderItem->StartIndexLocation = renderItem->Geo->DrawArgs[geoName].StartIndexLocation;
 	renderItem->BaseVertexLocation = renderItem->Geo->DrawArgs[geoName].BaseVertexLocation;
 	renderItem->ObjCBIndex = 0;
-	renderItem->ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(m_Device, 1, true);
+	renderItem->ObjectCB = new UploadBuffer<ObjectConstants>(m_Device, 1, true);
 	if (!renderItem->ObjectCB || !renderItem->ObjectCB->Resource()) {
 		std::cerr << "[ERREUR] ObjectCB non initialisé dans BuildRenderItems() !" << std::endl;
 	}

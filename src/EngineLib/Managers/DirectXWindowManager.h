@@ -11,20 +11,15 @@ class DirectXWindowManager {
 	//##------------------------------- ATTRIBUTES -------------------------------##
 	//##############################################################################
 
-	//New class : DXRenderer
-	//- DXRenderer::Initialize()
-	//- DXRenderer::Uninitialize()
-	//- DXRenderer::Draw()
-	//- DXRenderer::Update()
-	//- DXRenderer::OnResize()
-
 	/* FLAGS */
 	bool m_Initialized;
 	bool m_lockMouseInWindow = false;
-	bool test;
 
 	HINSTANCE m_hAppInst = nullptr; // application instance handle
+	DXRenderer* m_DXRenderer = nullptr;
 
+	const int gNumFrameResources = 1;
+	
 	IDXGIFactory4* m_Factory;
 	ID3D12Device* m_Device;
 	ID3D12Fence* m_Fence;
@@ -36,7 +31,6 @@ class DirectXWindowManager {
 	ID3D12Resource* m_DepthStencilBuffer;
 	D3D12_VIEWPORT mScreenViewport;
 	D3D12_RECT mScissorRect;
-	//Command List
 	ID3D12CommandQueue* m_CommandQueue;
 	ID3D12CommandAllocator* m_DirectCmdListAlloc;
 	ID3D12GraphicsCommandList* m_CommandList;
@@ -51,33 +45,25 @@ class DirectXWindowManager {
 	D3D_DRIVER_TYPE md3dDriverType = D3D_DRIVER_TYPE_HARDWARE;
 	DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-
-	struct Vertex {
-		XMFLOAT3 Pos;
-		XMFLOAT4 Color;
-	};
-
+	
 	struct ObjectConstants {
 		XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
 	};
 
-	// sphere
 	std::unordered_map<std::string, MeshGeometry*> m_Geometries;
 
 	ID3DBlob* m_vsByteCode = nullptr;
 	ID3DBlob* m_psByteCode = nullptr;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> m_InputLayout;
-
-	// Buffer de sommets et vue.
+	
 	ID3D12Resource* m_VertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
 
 	// Pipeline State Object et signature racine.
 	ID3D12PipelineState* m_PSO = nullptr;
 	ID3D12RootSignature* m_RootSignature;
-	//ID3D12DescriptorHeap* m_CbvHeap;
-	ID3D12DescriptorHeap* m_CbvHeap2 = nullptr;
+	ID3D12DescriptorHeap* m_CbvHeap = nullptr;
 
 	XMFLOAT4X4 m_View = MathHelper::Identity4x4();
 	XMFLOAT4X4 m_Proj = MathHelper::Identity4x4();
@@ -87,28 +73,20 @@ class DirectXWindowManager {
 	MeshGeometry* m_pPyramidSquaredGeo = nullptr;
 	MeshGeometry* m_pSphereGeo = nullptr;
 
-	//Without camera rotation
-	/*float m_Theta = 1.5f * PI_f;
-	float m_Phi = DirectX::XM_PIDIV4;
-	float m_Radius = 5.0f;*/
-
 	POINT m_LastMousePos;
 
 	struct RenderItem {
 		XMFLOAT4X4* pEntityWorldMatrix;
-		int NumFramesDirty = 1/*gNumFrameResources*/;
 		UINT ObjCBIndex = -1;
 		UINT IndexCount = 0;
 		MeshGeometry* Geo = nullptr;
 		D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		UINT StartIndexLocation = 0;
 		int BaseVertexLocation = 0;
-
-		//CB unique pour chaque Render Item
-		std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+		
+		UploadBuffer<ObjectConstants>* ObjectCB = nullptr;
 	};
-
-	// Liste des objets opaques à afficher
+	
 	std::vector<RenderItem*> m_OpaqueRitems;
 
 public:
@@ -155,8 +133,6 @@ public:
 
 	void Update();
 	void Draw();
-	void CalculateFrameStats();
-
 	bool InitializeWindow(UINT16 windowWidth, UINT16 windowHeight, LPCWSTR windowTitle);
 	int InitializeDirectX3D();
 	bool CheckMSAASupport();
@@ -177,13 +153,7 @@ public:
 	void BuildPSO();
 	void InitializePyramidTriangleGeo();
 	void InitializePyramidSquaredGeo();
-	void SphereGeo();
-
-	void OnMouseDown(WPARAM btnState, int x, int y);
-	void OnMouseUp(WPARAM btnState, int x, int y);
 	void OnResize();
-
-	void BuildRenderItems();
-	void DrawEntity(const std::string& geoName, Entity& entity);
+	void DrawEntity(const std::string& geoName, const Entity& entity);
 
 };

@@ -2,8 +2,7 @@
 #include "PlayerScript.h"
 
 PlayerScript::PlayerScript(Entity& attachedEntity) :
-	EntityScript(attachedEntity)
-{}
+	EntityScript(attachedEntity), m_InputsManager(nullptr) {}
 
 void PlayerScript::Start() {
 	m_InputsManager = &Wiz::InputsManager::Get();
@@ -22,7 +21,6 @@ void PlayerScript::End() {
 }
 
 void PlayerScript::OnCollision(const CollidingResult result) {
-
 	std::cout << "Colliding ..." << std::endl;
 }
 
@@ -50,8 +48,6 @@ void PlayerScript::Move(const Wiz::Key key) {
 	
 	directionalVector *= m_Speed; //Add Speed
 	directionalVector *= GameManager::Get()->GetDeltaTime(); //Add deltaTime to prevent all configurations (FPS low/high)
-
-	auto dc = XMLoadFloat3(&entityTransform.GetPosition());
 	directionalVector += XMLoadFloat3(&entityTransform.GetPosition()); //NewVelocity is now the new position (not create another variable for optimization)
 	
 	XMFLOAT3 newPosition = {};
@@ -74,10 +70,6 @@ void PlayerScript::OnMouseMove(const Wiz::Key key) {
 
 	lastMousePos.x+= DirectXWindowManager::m_WindowInformationPtr->firstPixelPosition.x;
 	lastMousePos.y+= DirectXWindowManager::m_WindowInformationPtr->firstPixelPosition.y;
-	
-	// std::cout << "OnMouseMove()" << std::endl; //{LOG}
-	// std::cout << "OldX: " << m_LastMousePos.x << " OldY: " << m_LastMousePos.y << std::endl; //{LOG}
-	// std::cout << "NewX: " << lastMousePos.x << " NewY: " << lastMousePos.y << std::endl; //{LOG}
 
 	if (Wiz::InputsManager::Get().IsPressed(Wiz::Key::MOUSE_LEFT) || mouseLockedInWindow) {
  
@@ -85,13 +77,11 @@ void PlayerScript::OnMouseMove(const Wiz::Key key) {
 
 		float dx = sensitivity * static_cast<float>(lastMousePos.x - m_LastMousePos.x);
 		float dy = sensitivity * static_cast<float>(lastMousePos.y - m_LastMousePos.y);
-    	
-		//std::cout << "DeltaX: " << dx << " DeltaY: " << dy << std::endl; //{LOG}
-
+		
 		/* Y axes reverted */
 		XMVECTOR vUp = cameraC->m_Transform.GetUpVector();
 		float allUpAxesSum = XMVectorGetX(vUp) + XMVectorGetY(vUp) + XMVectorGetZ(vUp);
-		dx *= (allUpAxesSum > 0.f ? 1.f : -1.f);
+		dx *= allUpAxesSum > 0.f ? 1.f : -1.f;
 		//TODO: Problem when the sum near 0 because the result switch + => - => + => - ...
     	
 		cameraC->m_AttachedEntity->m_Transform.LocalRotate(dy, dx, 0.f);

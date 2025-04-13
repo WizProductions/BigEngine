@@ -1,14 +1,19 @@
 #pragma once
-#include "Scenes/Scene.h"
 
-class MainScene final : public Scene {
+class DXRenderer {
 
 //##############################################################################
-//##------------------------------- ATTRIBUTS -------------------------------##
+//##------------------------------- ATTRIBUTES -------------------------------##
 //##############################################################################
 
 
-	
+private:
+
+	/* FLAGS */
+	bool m_Initialized;
+
+private:
+
 //#############################################################################
 //##--------------------------------- CLASS ---------------------------------##
 //#############################################################################
@@ -16,22 +21,14 @@ class MainScene final : public Scene {
 
 public:
 
-/**----------< CONSTRUCTORS >----------*/
+/*----------< CONSTRUCTORS >----------*/
+	DXRenderer();
+	~DXRenderer();
+/*------------------------------------*/
 
-	MainScene() = default;
-	~MainScene() override = default;
+	bool Init();
+	void UnInit();
 
-/**------------------------------------*/
-
-
-
-/* INHERITED FUNCTIONS */
-	
-	void Init(GameManager* GameManager) override;
-	
-	void OnUpdate() override;
-	void OnDraw() override;
-	void OnEvent() override;
 
 /* GETTERS */
 
@@ -44,5 +41,8 @@ public:
 
 
 /* OTHERS FUNCTIONS */
-	
+
+	void Update();
+	void Draw();
+	void OnResize();
 };

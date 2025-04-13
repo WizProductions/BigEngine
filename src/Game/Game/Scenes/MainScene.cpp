@@ -2,7 +2,6 @@
 #include "MainScene.h"
 #include "Entities/Entity.h"
 #include "Game/Scripts/PlayerScript.h"
-#include "Game/Scripts/ScriptTest.h"
 
 //##############################################################################
 //################################ CONSTRUCTORS ################################

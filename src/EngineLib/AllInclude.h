@@ -35,9 +35,12 @@
 #include <DirectXFiles/UploadBuffer.h>
 #include <Utils/GeometryGenerator.h>
 
+#define ret return
+
 //Enumerations
 #include <Enumerations/CollisionsEnum.h>
 #include <Enumerations/SystemsEnum.h>
+#include <Enumerations/GeometryType.h>
 
 //Utils
 #include <Utils/MiscUtils.h>
@@ -48,6 +51,10 @@
 //Structs
 #include <Structs/CollidingResult.h>
 #include <Structs/WindowInformation.h>
+#include <Structs/Vertex.h>
+
+//DX Encaps
+#include <DXEncaps/DXRenderer.h>
 
 //Managers
 #include <Managers/ApplicationManager.h>
