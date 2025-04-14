@@ -608,7 +608,6 @@ void DirectXWindowManager::BuildBoxGeometry() {
 	submesh.BaseVertexLocation = 0;
 
 	m_pBoxGeo->DrawArgs["box"] = submesh;
-
 	m_Geometries["box"] = m_pBoxGeo;
 }
 
@@ -924,17 +923,18 @@ void DirectXWindowManager::OnResize() {
 	m_WindowInformationPtr->UpdateFirstPixelPosition();
 }
 
-void DirectXWindowManager::DrawEntity(const std::string& geoName, const Entity& entity) {
+void DirectXWindowManager::DrawEntity(const GeometryType& geoType, const Entity& entity) {
 	RenderItem* renderItem = new RenderItem();
 	Transform& entityTransform = entity.m_Transform;
 	renderItem->pEntityWorldMatrix = &entityTransform.mWorld;
 	renderItem->ObjCBIndex = static_cast<UINT>(m_OpaqueRitems.size());
-	renderItem->Geo = m_Geometries[geoName];
+	renderItem->Geo = &DXGeometry::GetGeometry(geoType);
 	renderItem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	renderItem->IndexCount = renderItem->Geo->DrawArgs[geoName].IndexCount;
-	renderItem->StartIndexLocation = renderItem->Geo->DrawArgs[geoName].StartIndexLocation;
-	renderItem->BaseVertexLocation = renderItem->Geo->DrawArgs[geoName].BaseVertexLocation;
-	renderItem->ObjCBIndex = 0;
+
+	const char* geoDrawArgs = DXGeometry::GetGeoDrawArgs(geoType);
+	renderItem->IndexCount = renderItem->Geo->DrawArgs[geoDrawArgs].IndexCount;
+	renderItem->StartIndexLocation = renderItem->Geo->DrawArgs[geoDrawArgs].StartIndexLocation;
+	renderItem->BaseVertexLocation = renderItem->Geo->DrawArgs[geoDrawArgs].BaseVertexLocation;
 	renderItem->ObjectCB = new UploadBuffer<ObjectConstants>(m_Device, 1, true);
 	if (!renderItem->ObjectCB || !renderItem->ObjectCB->Resource()) {
 		std::cerr << "[ERREUR] ObjectCB non initialisé dans BuildRenderItems() !" << std::endl;

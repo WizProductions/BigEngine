@@ -21,7 +21,7 @@ class DirectXWindowManager {
 	const int gNumFrameResources = 1;
 	
 	IDXGIFactory4* m_Factory;
-	ID3D12Device* m_Device;
+	inline static ID3D12Device* m_Device;
 	ID3D12Fence* m_Fence;
 	UINT64 m_CurrentFence = 0;
 	int m_CurrBackBuffer = 0;
@@ -33,7 +33,7 @@ class DirectXWindowManager {
 	D3D12_RECT mScissorRect;
 	ID3D12CommandQueue* m_CommandQueue;
 	ID3D12CommandAllocator* m_DirectCmdListAlloc;
-	ID3D12GraphicsCommandList* m_CommandList;
+	inline static ID3D12GraphicsCommandList* m_CommandList;
 
 	UINT m_RtvDescriptorSize = 0;
 	UINT m_DsvDescriptorSize = 0;
@@ -154,6 +154,8 @@ public:
 	void InitializePyramidTriangleGeo();
 	void InitializePyramidSquaredGeo();
 	void OnResize();
-	void DrawEntity(const std::string& geoName, const Entity& entity);
+	void DrawEntity(const GeometryType& geoType, const Entity& entity);
+
+	friend DXGeometry;
 
 };

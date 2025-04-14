@@ -54,6 +54,7 @@
 #include <Structs/Vertex.h>
 
 //DX Encaps
+#include <DXEncaps/DXGeometry.h>
 #include <DXEncaps/DXRenderer.h>
 
 //Managers
