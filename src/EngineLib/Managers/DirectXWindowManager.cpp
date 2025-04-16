@@ -262,6 +262,8 @@ int DirectXWindowManager::InitializeDirectX3D() {
 	BuildConstantBuffers();
 	BuildPSO();
 
+	DXGeometry::GetGeometry(GeometryType::CUBE);
+
 // Execute the initialization commands.
 	ThrowIfFailed(m_CommandList->Close());
 	ID3D12CommandList* cmdsLists[] = {m_CommandList};
