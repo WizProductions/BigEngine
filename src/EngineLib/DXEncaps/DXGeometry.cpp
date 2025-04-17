@@ -29,7 +29,7 @@ MeshGeometry* DXGeometry::CreateGeometry(GeometryType geometryType) {
 	if (auto func = geometryCreateFunctions[static_cast<int>(geometryType)])
 		func((*meshGeometry));
 	else
-		_ASSERT(false);
+		ASSERT_MSG(true, "DXGeometry::CreateGeometry()");
 
 	return meshGeometry;
 }
