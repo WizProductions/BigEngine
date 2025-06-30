@@ -7,8 +7,6 @@ public:
     UploadBuffer(ID3D12Device* device, UINT elementCount, bool isConstantBuffer)
         : mDevice(device), mIsConstantBuffer(isConstantBuffer)
     {
-        //UploadBuffer<T>* bufferPtr = new UploadBuffer<T>(device, elementCount, isConstantBuffer);
-        mElementByteSize = sizeof(T);
 
         if (isConstantBuffer)
             mElementByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(T));
@@ -65,7 +63,7 @@ public:
     }
 
 private:
-    ID3D12Device* mDevice = nullptr;  //Ajout du pointeur sur device
+    ID3D12Device* mDevice = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> mUploadBuffer;
     BYTE* mMappedData = nullptr;
 

@@ -2,7 +2,6 @@
 #include "MainScene.h"
 #include "Entities/Entity.h"
 #include "Game/Scripts/PlayerScript.h"
-#include "Game/Scripts/ScriptTest.h"
 
 //##############################################################################
 //################################ CONSTRUCTORS ################################
@@ -176,34 +175,34 @@ building17->m_Transform.SetScale(3.3, 90, 3.3);
 		lagBuilding[i]->m_Transform.SetScale(width, height, depth);
     
 
-		DirectXWindowManager::Get().DrawEntity("box", *lagBuilding[i]);
+		DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *lagBuilding[i]);
 	}
 #endif
 
 
-DirectXWindowManager::Get().DrawEntity("box", *player);
-DirectXWindowManager::Get().DrawEntity("box", *ground);
-DirectXWindowManager::Get().DrawEntity("prisme_triangle", *Pyramid1);
-DirectXWindowManager::Get().DrawEntity("prisme_triangle_carre", *Pyramid2);
-DirectXWindowManager::Get().DrawEntity("box", *cube);
-DirectXWindowManager::Get().DrawEntity("box", *building0);
-DirectXWindowManager::Get().DrawEntity("box", *building1);
-DirectXWindowManager::Get().DrawEntity("box", *building2);
-DirectXWindowManager::Get().DrawEntity("box", *building3);
-DirectXWindowManager::Get().DrawEntity("box", *building4);
-DirectXWindowManager::Get().DrawEntity("box", *building5);
-DirectXWindowManager::Get().DrawEntity("box", *building6);
-DirectXWindowManager::Get().DrawEntity("box", *building7);
-DirectXWindowManager::Get().DrawEntity("box", *building8);
-DirectXWindowManager::Get().DrawEntity("box", *building9);
-DirectXWindowManager::Get().DrawEntity("box", *building10);
-DirectXWindowManager::Get().DrawEntity("box", *building11);
-DirectXWindowManager::Get().DrawEntity("box", *building12);
-DirectXWindowManager::Get().DrawEntity("box", *building13);
-DirectXWindowManager::Get().DrawEntity("box", *building14);
-DirectXWindowManager::Get().DrawEntity("box", *building15);
-DirectXWindowManager::Get().DrawEntity("box", *building16);
-DirectXWindowManager::Get().DrawEntity("box", *building17);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *player);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *ground);
+// DirectXWindowManager::Get().DrawEntity("prisme_triangle", *Pyramid1);
+// DirectXWindowManager::Get().DrawEntity("prisme_triangle_carre", *Pyramid2);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *cube);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building0);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building1);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building2);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building3);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building4);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building5);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building6);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building7);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building8);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building9);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building10);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building11);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building12);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building13);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building14);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building15);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building16);
+DirectXWindowManager::Get().DrawEntity(GeometryType::CUBE, *building17);
 
 //#define _revert_test_
 #ifndef _revert_test_

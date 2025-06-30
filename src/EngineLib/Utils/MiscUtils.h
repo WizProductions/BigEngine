@@ -24,6 +24,12 @@ return false; \
 } \
 } while (0)
 
+/** Initialize a pointer with a value but if you want to sure the pointer is valid use "INIT_PTR" */
+#define INIT_PTR_N(ptr, value) \
+do { \
+ptr = value; \
+} while (0)
+
 #define UNINIT_PTR(ptr) \
 do { \
 if (ptr != nullptr) { \
@@ -65,9 +71,9 @@ this->UnInit(); \
 #define FOR_J(start, operator, end, nextOperator) for (int j(start); j operator end; j nextOperator)
 
 #define ASSERT_MSG(expr, msg) \
-	if (!expr) { \
-	std::cerr << "ASSERT was triggered at: " << __FILE__ << ":" << __LINE__ << " in " << __func__ << std::endl; \
-	assert(expr && msg); \
+	if (expr) { \
+	std::cerr << "ASSERT was triggered at: " << __FILE__ << ":" << __LINE__ << " in " << __func__ << " msg" << msg << std::endl; \
+	assert(false && msg); \
 	} \
 
 class MiscUtils {

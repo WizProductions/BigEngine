@@ -100,8 +100,7 @@ Wiz::InputsManager& Wiz::InputsManager::Get() {
 Wiz::KeyEventStructure& Wiz::InputsManager::GetKeyEventStructure(Key key) {
 	const unsigned char index = static_cast<unsigned char>(key);
 	if (index >= m_KeyEventStructuresTable.size()) {
-		std::cerr << "InputsManager::GetGeyEventStructure(): Key out of range." << std::endl;
-		_ASSERT(true);
+		ASSERT_MSG(true, "InputsManager::GetGeyEventStructure(): Key out of range.");
 	}
 	
 	return m_KeyEventStructuresTable[index];

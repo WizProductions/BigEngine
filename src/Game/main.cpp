@@ -3,7 +3,7 @@
 #include "Game/Scenes/MainScene.h"
 #include "Game/Scripts/SceneScriptTest.h"
 
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR cmdLine, int cmdShow) {
+int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nShowCmd) {
 
 	ApplicationManager* app = ApplicationManager::Get();
 	app->Init();

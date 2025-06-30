@@ -1,8 +1,7 @@
 #pragma once
 #include "Scripts/EntityScript.h"
-#include "Systems/HealthSystem.h"
 
-struct PlayerScript final : public EntityScript {
+struct PlayerScript final : EntityScript {
 
 //##############################################################################
 //##------------------------------- ATTRIBUTES --------------------------------##
@@ -37,7 +36,7 @@ public:
 	
 	void End() override;
 	
-	void OnCollision(const CollidingResult result) override;
+	void OnCollision(CollidingResult result) override;
 
 
 /* GETTERS */
