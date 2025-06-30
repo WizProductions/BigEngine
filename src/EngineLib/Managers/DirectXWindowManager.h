@@ -5,6 +5,10 @@ class GameTimer;
 struct IDXGIFactory4;
 struct IDXGISwapChain;
 
+/*
+ *	https://github.com/yottaawesome/intro-to-dx12 -> It's the base of this class.
+ */
+
 class DirectXWindowManager {
 
 	//##############################################################################
